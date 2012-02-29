@@ -1,0 +1,338 @@
+package li.zeitgeist.android;
+
+import java.lang.ref.SoftReference;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import android.content.Context;
+
+import android.graphics.Bitmap;
+
+import android.os.Handler;
+import android.os.Looper;
+
+import android.util.Log;
+import android.view.Display;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.GridView;
+import android.widget.TextView;
+
+import li.zeitgeist.api.*;
+import li.zeitgeist.api.error.ZeitgeistError;
+import li.zeitgeist.api.error.ZeitgeistError;
+
+interface NewItemsListener {
+    // the list thread calls this after populating items hash with
+    // new items
+    void newItemsAvailable();
+}
+
+interface NewThumbListener {
+    // the thumb download thread informs the ui thread that a bitmap
+    // for a item is ready
+    void newThumbAvailable(int id, Bitmap bitmap);
+}
+
+/**
+ * Manages the data used to display the gallery:
+ * - A Vector (currently) of Item objects
+ * - A Hashtable of SoftReferences to Bitmaps 
+ *   of Thumbnails loaded of the web and stored locally
+ *   if the reference is unreachable it is loaded from sdcard
+ * 
+ * also implements the thread for reading/downloading/caching
+ * and the adapter that the gridview is actually using.
+ * 
+ * @author apoc
+ */
+public class Gallery implements NewItemsListener {
+    public static final String TAG = ZeitgeistApp.TAG + ":Gallery";
+
+	private GalleryActivity activity;
+	private Adapter adapter;
+
+    private Map<Integer, Item> items;
+
+    // to scale the thumbnails
+    private int screenWidth;
+
+    // gridview dimensions/spacings/paddings
+    // thumb == thumbnail == single imageview
+    private static final int THUMB_SPACING = 5;
+    private static final int THUMB_PADDING = 4;
+    private int thumbMinWidth = 130;
+    private int thumbMaxWidth = 200;
+    private int thumbWidth;
+    private int numColumns;
+
+    private GridView gridView;
+
+    private Zeitgeist api;
+
+    private ListThread listThread;
+
+    public ListThread getListThread() {
+        return listThread;
+    }
+
+    private Handler handler;
+	
+	public Gallery(GalleryActivity activity) {
+		this.activity = activity;
+		this.adapter = new Adapter((Context)activity);
+
+        this.handler = new Handler(); // so to easily access the UI thread
+
+        // set screen width
+        Display display = activity.getWindowManager().getDefaultDisplay();
+        screenWidth = display.getWidth() - 4; /* FIXME: where the 2 spacing comming from? */
+
+        // set grid dimensions:
+        numColumns = (int) Math.ceil(screenWidth / thumbMinWidth);
+        int targetWidth = (int) Math.floor(screenWidth / numColumns);
+        targetWidth = targetWidth * numColumns - ((numColumns+1) * (THUMB_SPACING));
+        thumbWidth = (int) Math.floor(targetWidth / numColumns);
+        Log.d(TAG, "Grid dimensions: numColumns=" + String.valueOf(numColumns) + 
+                   " screenWidth=" + String.valueOf(screenWidth) + 
+                   " thumbWidth=" + String.valueOf(thumbWidth) + 
+                   " targetWidth=" + String.valueOf(targetWidth)); 
+
+        items = new HashMap<Integer, Item>();
+
+        listThread = new ListThread(this, items);
+        listThread.start();
+
+
+        // listThread.queueList(1);
+        // listThread.queueList(42);
+
+
+
+        /*
+        TextView test = (TextView)activity.findViewById(R.id.testText);
+        test.setText("Gallery loaded");
+
+        api = new Zeitgeist("http://ip.apoc.cc:4567");
+        try {
+			Item item = api.item(19312);
+            test.setText("Gallery loaded, Item test loaded, title=" + item.getTitle());
+		} catch (ZeitgeistError e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        */
+
+	}
+
+    
+    // thread that uses the API to download and populate the items hash
+    // with new items as needed.
+    private class ListThread extends Thread {
+        private Handler handler = null;
+
+        private NewItemsListener listener;
+        private Map<Integer, Item> items;
+
+        private final Zeitgeist api;
+
+        public ListThread(NewItemsListener listener, Map<Integer, Item> items) {
+            this.listener = listener;
+            this.items = items;
+            this.api = new Zeitgeist("http://ip.apoc.cc:4567");
+        }
+
+        @Override
+        public void run() {
+            try {
+                // loop on current (the listthread thread)
+                Looper.prepare();
+
+                handler = new Handler(); // a 'queue' of stuff to do?
+
+                // start with the first page
+                queueList(1);
+
+                Looper.loop(); // gogogo!
+            }
+            catch (Throwable t) {
+                Log.e(TAG, "ListThread halted because of error: ", t);
+            }
+        }
+
+        public synchronized void stopThread() {
+            handler.post(new Runnable() {
+                public void run() {
+                    Log.i(TAG, "ListThread quitting..");
+                    Looper.myLooper().quit();
+                }
+            });
+        }
+
+        public synchronized void queueList(final int page) {
+            if (handler == null) return;
+            handler.post(new Runnable() {
+                public void run() {
+                    try {
+                        Log.i(TAG, "list page: " + String.valueOf(page));
+						List<Item> result = api.list(page);
+                        synchronized (items) {
+                            for (Item item : result) {
+                                items.put(item.getId(), item);
+                            }
+                        }
+                        listener.newItemsAvailable();
+					} catch (ZeitgeistError e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+                    
+                }
+            });
+        }
+    }
+
+    // this is a memory cache with soft references to Bitmaps
+    // if a thumbnail is downloaded it is stored on sdcard +
+    // stored in the thumbCache, when its accessed and the
+    // reference is GC'd it is reload from sdcard into the 
+    // thumbCache again
+    private Map<Integer, SoftReference<Bitmap>> thumbCache;
+
+    public class ThumbDownloadThread extends Thread {
+        private Handler handler = null;
+
+        private NewThumbListener listener;
+
+        private Map<Integer, SoftReference<Bitmap>> thumbs;
+
+        private final Zeitgeist api;
+
+        public ThumbDownloadThread(NewThumbListener listener, Map<Integer, Item> items) {
+            this.listener = listener;
+            this.items = items;
+            this.api = new Zeitgeist("http://ip.apoc.cc:4567");
+        }
+
+        @Override
+        public void run() {
+            try {
+                // loop on current (the listthread thread)
+                Looper.prepare();
+
+                handler = new Handler(); // a 'queue' of stuff to do?
+
+                // start with the first page
+                queueList(1);
+
+                Looper.loop(); // gogogo!
+            }
+            catch (Throwable t) {
+                Log.e(TAG, "ListThread halted because of error: ", t);
+            }
+        }
+
+        public synchronized void stopThread() {
+            handler.post(new Runnable() {
+                public void run() {
+                    Log.i(TAG, "ListThread quitting..");
+                    Looper.myLooper().quit();
+                }
+            });
+        }
+
+        public synchronized void queueList(final int page) {
+            if (handler == null) return;
+            handler.post(new Runnable() {
+                public void run() {
+                    try {
+                        Log.i(TAG, "list page: " + String.valueOf(page));
+						List<Item> result = api.list(page);
+                        synchronized (items) {
+                            for (Item item : result) {
+                                items.put(item.getId(), item);
+                            }
+                        }
+                        listener.newItemsAvailable();
+					} catch (ZeitgeistError e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+                    
+                }
+            });
+        }
+    }
+
+    /**
+     * Setup the size/spacings and assign the adapter to
+     * the GridView supplied.
+     */
+    public void setGridView(GridView gridView) {
+        gridView.setHorizontalSpacing(THUMB_SPACING);
+        gridView.setVerticalSpacing(THUMB_SPACING);
+        gridView.setColumnWidth(thumbWidth);
+        gridView.setNumColumns(numColumns);
+        gridView.setAdapter(this.adapter);
+        this.gridView = gridView;
+    }
+	
+	public class Adapter extends BaseAdapter {
+		Context context;
+		
+		public Adapter(Context context) {
+			this.context = context;
+			
+		}
+
+		@Override
+		public int getCount() {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		@Override
+		public Object getItem(int position) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public long getItemId(int position) {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		@Override
+		public View getView(int position, View convertView, ViewGroup parent) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+	}
+
+	@Override
+	public void newItemsAvailable() {
+
+        // do it within the UI thread!!!!!!!
+        Log.d(TAG, "new items avail.");
+
+        handler.post(new Runnable() {
+            public void run() {
+
+                Log.d(TAG, "update text test..");
+
+                TextView test = (TextView)activity.findViewById(R.id.testText);
+                test.setText( test.getText() + "\nitems size: " + String.valueOf(items.size()) );
+
+                // here we would update the adapter or "notify" the adapter
+                //
+            }
+        });
+
+		
+	}
+
+}
