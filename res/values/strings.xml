@@ -2,6 +2,7 @@
 <resources>
 
     <string name="app_name">Zeitgeist</string>
-   
+    <string name="thumbnail_image">Thumbnail Image</string>
+    <string name="back_to_gallery">Back</string>
 
 </resources>

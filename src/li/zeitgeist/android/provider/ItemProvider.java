@@ -1,9 +1,10 @@
-package li.zeitgeist.android.worker;
+package li.zeitgeist.android.provider;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -16,16 +17,17 @@ import li.zeitgeist.api.*;
 import li.zeitgeist.api.error.ZeitgeistError;
 
 // holds a vector of items and downloads new ones upon request
-public class ItemWorker extends Thread {
+public class ItemProvider extends Thread {
 
-    public static final String TAG = ZeitgeistApp.TAG + ":ItemWorker";
+    public static final String TAG = ZeitgeistApp.TAG + ":ItemProvider";
 
     // informs the listener that there some new items to show
     public interface NewItemsListener {
-        public void newItems();
+        public void onNewItems(List<Item> newItemsList);
     }
 
-    private NewItemsListener newListener = null;
+    //private NewItemsListener newListener = null;
+    private List<NewItemsListener> newListener;
 
     // Memory Cache of Items TODO: dump this into a database or something
     // private Map<Integer, Item> cache;
@@ -39,26 +41,45 @@ public class ItemWorker extends Thread {
 
     // thread handler allows to execute code within this thread
     Handler handler;
+    
+    private Handler uiThreadHandler;
+    
+    private boolean loading = false;
 
     private ZeitgeistApi api;
 
-    public ItemWorker(ZeitgeistApi api) {
+    public ItemProvider(ZeitgeistApi api) {
         this.api = api;
         // cache = new HashMap<Integer, Item>();
         cache = new Vector<Item>();
+        
+        uiThreadHandler = new Handler();
+        
+        newListener = new Vector<NewItemsListener>();
     }
 
-    public void setNewItemsListener(NewItemsListener newListener) {
-        this.newListener = newListener;
+    public void addNewItemsListener(NewItemsListener listener) {
+    	newListener.add(listener);
     }
 
     public Item getItemByPosition(int position) {
         return cache.get(position);
     }
+    
+    public Item getItemById(int id) {
+        for (Item item : cache) {
+            if (item.getId() == id) {
+                return item;
+            }
+        }
+        return null;
+    }
 
+    private int itemCount;
+    
     // How many items are there currently availible
     public int getItemCount() {
-        return cache.size();
+        return itemCount;
     }
 
     public void queryOlderItems() {
@@ -70,50 +91,68 @@ public class ItemWorker extends Thread {
     }
 
     private void queryItems(final int after, final int before) {
+    	loading = true;
         handler.post(new Runnable() {
             public void run() {
                 Log.d(TAG, "Query Items: after="+String.valueOf(after)+" before="+String.valueOf(before));
 
                 try {
-                    List<Item> result;
+                    List<Item> newItemsList;
 
                     if (after >= 0) {
-                            result = api.listAfter(after);
+                    	newItemsList = api.listAfter(after);
                     }
                     else if (before >= 0) {
-                        result = api.listBefore(before);
+                    	newItemsList = api.listBefore(before);
                     }
                     else {
-                        result = api.list();
+                    	newItemsList = api.list();
                     }
+                    
+                    newItemsList = new CopyOnWriteArrayList<Item>(newItemsList);
 
-                    Log.d(TAG, "Query returned " + String.valueOf(result.size()) + " items.");
+                    Log.d(TAG, "Query returned " + String.valueOf(newItemsList.size()) + " items.");
 
-                    int high = result.get(0).getId(),
-                        low = result.get(result.size() - 1).getId();
+                    int high = newItemsList.get(0).getId(),
+                        low = newItemsList.get(newItemsList.size() - 1).getId();
                     Log.d(TAG, "high="+String.valueOf(high)+" low="+String.valueOf(low));
                     if (firstId == -1 || low < firstId) // the oldest id (the smallest)
                         firstId = low;
                     if (lastId == -1 || high > lastId) // the newest id (the biggest)
                         lastId = high;
 
-                    for (Item item : result) {
+                    for (Item item : newItemsList) {
+                        // ignore items without images
+                        if (item.getImage() == null) {
+                            newItemsList.remove(item);
+                            continue;
+                        }
+                        
                         cache.add(item);
                         // cache.put(item.getId(), item);
                     }
+                    
+                    // make the new size public:
+                    itemCount = cache.size();
 
+                	loading = false;
                     if (newListener != null) {
-                        newListener.newItems();
+                    	// call the listener callback in ui thread
+                    	for (NewItemsListener listener : newListener) {
+                    		listener.onNewItems(newItemsList);
+                    	}
                     }
 
                 } catch (ZeitgeistError e) {
                     e.printStackTrace();
+                    
                 }
             }
         });
     }
 
     public synchronized void stopThread() {
+    	loading = false;
         if (this.isAlive()) {
             handler.post(new Runnable() {
                 public void run() {
@@ -122,6 +161,10 @@ public class ItemWorker extends Thread {
                 }
             });
         }
+    }
+    
+    public boolean isLoading() {
+    	return loading;
     }
 
     @Override
