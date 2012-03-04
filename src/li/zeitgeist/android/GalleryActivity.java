@@ -1,5 +1,6 @@
 package li.zeitgeist.android;
 
+import android.text.ClipboardManager;
 import android.util.*;
 import android.app.Activity;
 import android.app.ProgressDialog;
@@ -10,6 +11,10 @@ import android.os.Bundle;
 
 import android.view.Display;
 import android.view.Gravity;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.MenuItem.OnMenuItemClickListener;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
@@ -28,7 +33,7 @@ import li.zeitgeist.android.provider.ItemProvider;
 import li.zeitgeist.android.provider.ThumbnailProvider;
 import li.zeitgeist.api.Item;
 
-public class GalleryActivity extends Activity implements OnScrollListener, OnItemClickListener {
+public class GalleryActivity extends Activity implements OnScrollListener, OnItemClickListener, OnMenuItemClickListener {
 
     private static final String TAG = ZeitgeistApp.TAG + ":GalleryActivity";
 
@@ -58,6 +63,8 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
     
     public GridView getGridView() {
         return gridView;
+    
+    
     }
     
     @Override
@@ -109,6 +116,16 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         }
     }
     
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.gallery_menu, menu);
+        
+        menu.findItem(R.id.galleryMenuSettingsItem).setOnMenuItemClickListener(this);
+        
+        return true;
+    }
+    
     public void hideProgressDialog() {
     	if (!isFinishing() && progressDialog != null && progressDialog.isShowing()) {
     	    // progressDialog.getWindow()
@@ -136,6 +153,8 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         super.onResume();
         Log.v(TAG, "onResume()");
     }
+    
+    private int lastVisibleItemCount = 0;
 
 	@Override
 	public void onScroll(AbsListView view, int firstVisibleItem,
@@ -144,12 +163,12 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
 		    Log.d(TAG, "itemProvider is loading");
 		    return;
 		}
-		
-        Log.d(TAG, "onScroll(firstVisibleItem=" + String.valueOf(firstVisibleItem) + " visibleItemCount=" + String.valueOf(visibleItemCount) + " totalItemCount=" + String.valueOf(totalItemCount) + ")");
 
-        if (totalItemCount - (firstVisibleItem + visibleItemCount) < scrollThreshold) {
+        if (totalItemCount - (firstVisibleItem + visibleItemCount) < scrollThreshold &&
+                lastVisibleItemCount != visibleItemCount) {
             Log.d(TAG, "you've reached the end, loading new items");
             itemProvider.queryOlderItems();
+            lastVisibleItemCount = visibleItemCount;
         }
 	}
 
@@ -227,6 +246,19 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         itemIdBundle.putInt("id", item.getId());
         showItemActivityIntent.putExtras(itemIdBundle);
         startActivity(showItemActivityIntent);
+    }
+
+    @Override
+    public boolean onMenuItemClick(MenuItem menuItem) {
+        switch (menuItem.getItemId()) {
+        case R.id.galleryMenuSettingsItem:
+            // show settings activity...
+            break;
+
+        }
+        
+        
+        return true;
     }
 
 }

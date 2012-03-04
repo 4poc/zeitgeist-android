@@ -26,17 +26,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         super();
         Log.v(TAG, "constructed");
     }
-    
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.item_menu, menu);
-        
-        menu.findItem(R.id.itemMenuBackItem).setOnMenuItemClickListener(this);
-        menu.findItem(R.id.itemMenuCopyUrlItem).setOnMenuItemClickListener(this);
-        
-        return true;
-    }
+
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -68,6 +58,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         WebSettings settings = webView.getSettings();
         settings.setBuiltInZoomControls(true);
         settings.setSupportZoom(true);
+        settings.setDefaultZoom(WebSettings.ZoomDensity.FAR);
         
         final ProgressBar progressBar = new ProgressBar(this);
         progressBar.setMax(100);
@@ -94,6 +85,17 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         
         webView.loadUrl(ZeitgeistApp.BASE_URL + item.getImage().getImage());
         
+    }
+    
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.item_menu, menu);
+        
+        menu.findItem(R.id.itemMenuBackItem).setOnMenuItemClickListener(this);
+        menu.findItem(R.id.itemMenuCopyUrlItem).setOnMenuItemClickListener(this);
+        
+        return true;
     }
     
     @Override

@@ -14,6 +14,7 @@ import android.util.Log;
 import li.zeitgeist.android.ZeitgeistApp;
 
 import li.zeitgeist.api.*;
+import li.zeitgeist.api.Item.Type;
 import li.zeitgeist.api.error.ZeitgeistError;
 
 // holds a vector of items and downloads new ones upon request
@@ -123,7 +124,9 @@ public class ItemProvider extends Thread {
 
                     for (Item item : newItemsList) {
                         // ignore items without images
-                        if (item.getImage() == null) {
+                        if (item.getType() != Type.IMAGE ||
+                          item.getImage() == null) {
+                            Log.d(TAG, "remove item because type is: " + String.valueOf(item.getType()));
                             newItemsList.remove(item);
                             continue;
                         }

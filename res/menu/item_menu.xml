@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <item android:id="@+id/itemMenuBackItem"
+    <item
+        android:id="@+id/itemMenuBackItem"
+        android:icon="@drawable/ic_menu_back"
         android:title="Back"
-        android:icon="@drawable/ic_menu_back" />
-    <item android:id="@+id/itemMenuCopyUrlItem"
+        />
+
+    <item
+        android:id="@+id/itemMenuCopyUrlItem"
+        android:icon="@drawable/ic_menu_set_as"
         android:title="Copy URL"
-        android:icon="@drawable/ic_menu_set_as" />
+        />
 
 </menu>
