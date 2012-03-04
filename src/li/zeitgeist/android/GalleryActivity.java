@@ -26,25 +26,11 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 
-import android.view.Display;
-import android.view.Gravity;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
+import android.view.*;
 import android.view.MenuItem.OnMenuItemClickListener;
-import android.view.View;
-import android.view.View.OnClickListener;
-import android.view.Window;
-import android.widget.AbsListView;
-import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
-import android.widget.Toast;
-import android.widget.ViewSwitcher;
+import android.widget.*;
 import android.widget.AbsListView.OnScrollListener;
-import android.widget.GridView;
+import android.widget.AdapterView.OnItemClickListener;
 
 import li.zeitgeist.android.provider.ItemProvider;
 import li.zeitgeist.android.provider.ThumbnailProvider;
