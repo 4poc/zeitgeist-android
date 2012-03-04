@@ -169,7 +169,7 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
                  new ViewSwitcher.LayoutParams(
                          (int) Math.floor(thumbWidth / 2.5), 
                          (int) Math.floor(thumbWidth / 2.5));
-        progressBarLayoutParams.gravity = Gravity.CENTER; // _HORIZONTAL | Gravity.CENTER_VERTICAL;
+        progressBarLayoutParams.gravity = Gravity.CENTER;
         ProgressBar progressBar = new ProgressBar(this);
         progressBar.setLayoutParams(progressBarLayoutParams);
         
@@ -227,9 +227,6 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         itemIdBundle.putInt("id", item.getId());
         showItemActivityIntent.putExtras(itemIdBundle);
         startActivity(showItemActivityIntent);
-        // startActivityForResult(intent, 1);
-        
-        // Toast.makeText(this, "foo", Toast.LENGTH_SHORT).show();
     }
 
 }

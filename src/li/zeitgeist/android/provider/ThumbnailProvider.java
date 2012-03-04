@@ -43,7 +43,7 @@ public class ThumbnailProvider implements NewItemsListener {
 
     private static final String TAG = ZeitgeistApp.TAG + ":ThumbnailProvider";
 
-    private static final int THREADS = 6;
+    private static final int THREADS = 8;
 
     public interface LoadedThumbnailListener {
         public void onLoadedThumbnail(final Bitmap bitmap);

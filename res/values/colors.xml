@@ -2,5 +2,6 @@
 <resources>
     
     <color name="gallery_item_view_background">#141414</color>
+    <color name="item_webview_background">#000000</color>
     
 </resources>
