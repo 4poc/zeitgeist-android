@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
@@ -83,7 +84,7 @@ public class ThumbnailProvider implements NewItemsListener {
      * This starts the thread pool, initializes the memory cache,
      * and creates the directories for the disk-cache (if necessary).
      */
-    public ThumbnailProvider() {
+    public ThumbnailProvider(Context context) {
         Log.v(TAG, "constructed");
         // start thread pool
         pool = Executors.newFixedThreadPool(THREADS);
@@ -104,12 +105,12 @@ public class ThumbnailProvider implements NewItemsListener {
         memCache = new LruCache<Integer, Bitmap>(150); // 150 * ~16 KiB = 2250 KiB
 
         // create disk cache directory
-        File externalStorageDirectory = Environment.getExternalStorageDirectory();
-        diskCache = new File(externalStorageDirectory, "zeitgeist/cache");
+        File externalStorageDirectory = context.getExternalFilesDir(null);
+        diskCache = new File(externalStorageDirectory, "cache");
         if (!diskCache.exists()) {
             diskCache.mkdirs();
-        	Log.d(TAG, "disk cache directory created " + diskCache.getAbsolutePath());
         }
+        Log.d(TAG, "disk cache: " + diskCache.getAbsolutePath());
         
         // map of assigned thumbnail load listener by item id
         loadedListeners = new HashMap<Integer, LoadedThumbnailListener>();
@@ -252,7 +253,7 @@ public class ThumbnailProvider implements NewItemsListener {
      * @return Bitmap or null
      */
     public Bitmap loadFromMemCache(Item item) {
-    	Log.v(TAG, "load from memory cache");
+     // Log.v(TAG, "load from memory cache");
         Bitmap bitmap = null;
         synchronized (memCache) {
             bitmap = memCache.get(item.getId());
@@ -261,7 +262,7 @@ public class ThumbnailProvider implements NewItemsListener {
     }
     
     private void saveToMemCache(Item item, Bitmap bitmap) {
-    	Log.v(TAG, "save to memory cache");
+    	// Log.v(TAG, "save to memory cache");
         synchronized (memCache) {
             // put in in-memory cache
             memCache.put(item.getId(), bitmap);

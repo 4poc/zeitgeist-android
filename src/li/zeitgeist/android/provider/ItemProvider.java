@@ -17,9 +17,15 @@
  */
 package li.zeitgeist.android.provider;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -39,7 +45,10 @@ public class ItemProvider extends Thread {
 
     public static final String TAG = ZeitgeistApp.TAG + ":ItemProvider";
 
-    // informs the listener that there some new items to show
+    /*
+     * Informs about a changed position cache. New or deleted
+     * items etc.
+     */
     public interface NewItemsListener {
         public void onNewItems(List<Item> newItemsList);
     }
@@ -47,9 +56,16 @@ public class ItemProvider extends Thread {
     //private NewItemsListener newListener = null;
     private List<NewItemsListener> newListener;
 
-    // Memory Cache of Items TODO: dump this into a database or something
-    // private Map<Integer, Item> cache;
-    private List<Item> cache;
+    /**
+     * Cached position, each time this is changed the adapter
+     * needs to be notified about it.
+     */
+    private List<Integer> positionCache;
+    
+    /**
+     * Cached item objects by Id.
+     */
+    private SortedMap<Integer, Item> itemCache;
 
     // first and last item ids that are present in the cache
     // the cache gets only populated in ranges, so you can
@@ -60,18 +76,16 @@ public class ItemProvider extends Thread {
     // thread handler allows to execute code within this thread
     Handler handler;
     
-    private Handler uiThreadHandler;
-    
     private boolean loading = false;
 
     private ZeitgeistApi api;
 
     public ItemProvider(ZeitgeistApi api) {
         this.api = api;
-        // cache = new HashMap<Integer, Item>();
-        cache = new Vector<Item>();
-        
-        uiThreadHandler = new Handler();
+       
+        // initialize caches, in-memory only atm.
+        itemCache = new TreeMap<Integer, Item>();
+        positionCache = new Vector<Integer>();
         
         newListener = new Vector<NewItemsListener>();
     }
@@ -81,23 +95,17 @@ public class ItemProvider extends Thread {
     }
 
     public Item getItemByPosition(int position) {
-        return cache.get(position);
+        int id = positionCache.get(position);
+        return itemCache.get(id);
     }
     
     public Item getItemById(int id) {
-        for (Item item : cache) {
-            if (item.getId() == id) {
-                return item;
-            }
-        }
-        return null;
+        return itemCache.get(id);
     }
-
-    private int itemCount;
     
     // How many items are there currently availible
     public int getItemCount() {
-        return itemCount;
+        return positionCache.size();
     }
 
     public void queryOlderItems() {
@@ -143,17 +151,21 @@ public class ItemProvider extends Thread {
                         // ignore items without images
                         if (item.getType() != Type.IMAGE ||
                           item.getImage() == null) {
-                            Log.d(TAG, "remove item because type is: " + String.valueOf(item.getType()));
                             newItemsList.remove(item);
                             continue;
                         }
                         
-                        cache.add(item);
-                        // cache.put(item.getId(), item);
+                        itemCache.put(item.getId(), item);
                     }
                     
-                    // make the new size public:
-                    itemCount = cache.size();
+                    // update/rebuild position cache
+                    List<Integer> newPositionCache = new Vector<Integer>();
+                    Iterator<Integer> iter = itemCache.keySet().iterator();
+                    while (iter.hasNext()) {
+                        newPositionCache.add(iter.next());
+                    }
+                    Collections.reverse(newPositionCache);
+                    positionCache = newPositionCache;
 
                 	loading = false;
                     if (newListener != null) {
@@ -204,6 +216,7 @@ public class ItemProvider extends Thread {
             Log.e(TAG, "ListThread halted because of error: ", t);
         }
     }
+    
 
 }
 

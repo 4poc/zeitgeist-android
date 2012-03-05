@@ -40,7 +40,7 @@ public class ZeitgeistApp extends Application {
         super.onCreate();
         
         itemProvider = new ItemProvider(new ZeitgeistApi(BASE_URL));
-        thumbnailProvider = new ThumbnailProvider();
+        thumbnailProvider = new ThumbnailProvider(this);
         
         // load the thumbnails of new items
         itemProvider.addNewItemsListener(thumbnailProvider);

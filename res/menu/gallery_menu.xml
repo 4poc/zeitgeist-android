@@ -6,5 +6,11 @@
         android:icon="@drawable/ic_menu_preferences" 
         android:title="Settings"
         />
+    
+    <item 
+        android:id="@+id/galleryMenuRefreshItem"
+        android:icon="@drawable/ic_menu_refresh" 
+        android:title="Refresh"
+        />
 
 </menu>

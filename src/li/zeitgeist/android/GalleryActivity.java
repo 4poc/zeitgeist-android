@@ -125,6 +125,7 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         inflater.inflate(R.menu.gallery_menu, menu);
         
         menu.findItem(R.id.galleryMenuSettingsItem).setOnMenuItemClickListener(this);
+        menu.findItem(R.id.galleryMenuRefreshItem).setOnMenuItemClickListener(this);
         
         return true;
     }
@@ -256,6 +257,11 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         switch (menuItem.getItemId()) {
         case R.id.galleryMenuSettingsItem:
             // show settings activity...
+            break;
+        
+        case R.id.galleryMenuRefreshItem:
+            Toast.makeText(this, "Fetching new items...", Toast.LENGTH_SHORT).show();
+            itemProvider.queryNewerItems();
             break;
 
         }
