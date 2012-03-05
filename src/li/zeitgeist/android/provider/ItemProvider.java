@@ -139,14 +139,6 @@ public class ItemProvider extends Thread {
 
                     Log.d(TAG, "Query returned " + String.valueOf(newItemsList.size()) + " items.");
 
-                    int high = newItemsList.get(0).getId(),
-                        low = newItemsList.get(newItemsList.size() - 1).getId();
-                    Log.d(TAG, "high="+String.valueOf(high)+" low="+String.valueOf(low));
-                    if (firstId == -1 || low < firstId) // the oldest id (the smallest)
-                        firstId = low;
-                    if (lastId == -1 || high > lastId) // the newest id (the biggest)
-                        lastId = high;
-
                     for (Item item : newItemsList) {
                         // ignore items without images
                         if (item.getType() != Type.IMAGE ||
@@ -157,6 +149,10 @@ public class ItemProvider extends Thread {
                         
                         itemCache.put(item.getId(), item);
                     }
+                    
+                    firstId = itemCache.firstKey();
+                    lastId = itemCache.lastKey();
+                    Log.d(TAG, "firstId:"+String.valueOf(firstId)+" lastId:"+String.valueOf(lastId));
                     
                     // update/rebuild position cache
                     List<Integer> newPositionCache = new Vector<Integer>();
