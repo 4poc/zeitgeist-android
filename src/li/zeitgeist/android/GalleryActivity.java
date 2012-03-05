@@ -23,8 +23,10 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 
 import android.view.*;
 import android.view.MenuItem.OnMenuItemClickListener;
@@ -45,7 +47,9 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
     
     private ProgressDialog progressDialog = null;
     
-    private GridView gridView;
+    private ViewSwitcher.LayoutParams imageViewLayoutParams;
+    
+    private GridView gridView = null;
     
     private static final int THUMB_SPACING = 5;
     private static final int THUMB_PADDING = 2;
@@ -56,6 +60,8 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
     private int thumbWidth;
     private int numColumns;
     private int scrollThreshold = 5;
+    
+    
     
     GalleryAdapter adapter;
 
@@ -74,6 +80,7 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.v(TAG, "onCreate()");
+
         
         itemProvider = ((ZeitgeistApp)getApplication()).getItemProvider();
         thumbnailProvider = ((ZeitgeistApp)getApplication()).getThumbnailProvider();
@@ -87,18 +94,8 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         Display display = getWindowManager().getDefaultDisplay();
         screenWidth = display.getWidth() - 4; /* FIXME: where the 2 spacing coming from? */
         
-        numColumns = (int) Math.ceil(screenWidth / thumbMinWidth);
-        int targetWidth = (int) Math.floor(screenWidth / numColumns);
-        targetWidth = targetWidth * numColumns - ((numColumns+1) * (THUMB_SPACING));
-        thumbWidth = (int) Math.floor(targetWidth / numColumns);
-        Log.d(TAG, "grid dimensions: numColumns=" + String.valueOf(numColumns) + 
-                   " screenWidth=" + String.valueOf(screenWidth) + 
-                   " thumbWidth=" + String.valueOf(thumbWidth) + 
-                   " targetWidth=" + String.valueOf(targetWidth));
-        
-        scrollThreshold = (int) Math.floor(numColumns * 2.5);
-        Log.d(TAG, "scroll threshold set to " + String.valueOf(scrollThreshold));
-        
+        updateThumbnailSize();
+
         // create adapter
         adapter = new GalleryAdapter(this, itemProvider, thumbnailProvider);
 
@@ -116,6 +113,30 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         progressDialog = ProgressDialog.show(this, null, "Loading...", true);
         if (itemProvider.getItemCount() > 0) {
         	progressDialog.hide();
+        }
+    }
+    
+    public void updateThumbnailSize() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        thumbMinWidth = prefs.getInt("thumbnailSize", 120);
+
+        numColumns = (int) Math.ceil(screenWidth / thumbMinWidth);
+        int targetWidth = (int) Math.floor(screenWidth / numColumns);
+        targetWidth = targetWidth * numColumns - ((numColumns+1) * (THUMB_SPACING));
+        thumbWidth = (int) Math.floor(targetWidth / numColumns);
+        Log.d(TAG, "grid dimensions: numColumns=" + String.valueOf(numColumns) + 
+                   " screenWidth=" + String.valueOf(screenWidth) + 
+                   " thumbWidth=" + String.valueOf(thumbWidth) + 
+                   " targetWidth=" + String.valueOf(targetWidth));
+        
+        scrollThreshold = (int) Math.floor(numColumns * 2.5);
+        Log.d(TAG, "scroll threshold set to " + String.valueOf(scrollThreshold));
+
+        imageViewLayoutParams = new ViewSwitcher.LayoutParams(thumbWidth, thumbWidth);
+        
+        if (gridView != null) {
+            Log.d(TAG, "INVALIDATE gridView");
+            gridView.invalidateViews(); // TODO: does not work
         }
     }
     
@@ -156,6 +177,8 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
     public void onResume() {
         super.onResume();
         Log.v(TAG, "onResume()");
+        
+        updateThumbnailSize();
     }
     
     private int lastVisibleItemCount = 0;
@@ -197,8 +220,6 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         progressBar.setLayoutParams(progressBarLayoutParams);
         
         // create image view
-        ViewSwitcher.LayoutParams imageViewLayoutParams = 
-                new ViewSwitcher.LayoutParams(thumbWidth, thumbWidth);
         ImageView imageView = new ImageView(this);
         imageView.setLayoutParams(imageViewLayoutParams);
         imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -236,6 +257,7 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         showItemViewImageView(view);
         
         ImageView imageView = getImageViewFromViewSwitcher((ViewSwitcher) view);
+        imageView.setLayoutParams(imageViewLayoutParams);
         imageView.setImageBitmap(bitmap);
 	}
 
@@ -256,7 +278,8 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
     public boolean onMenuItemClick(MenuItem menuItem) {
         switch (menuItem.getItemId()) {
         case R.id.galleryMenuSettingsItem:
-            // show settings activity...
+            Intent settingsActivity = new Intent(getBaseContext(), SettingsActivity.class);
+            startActivity(settingsActivity);
             break;
         
         case R.id.galleryMenuRefreshItem:
@@ -268,6 +291,10 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         
         
         return true;
+    }
+    
+    public GalleryAdapter getAdapter() {
+        return adapter;
     }
 
 }

@@ -24,6 +24,7 @@ import li.zeitgeist.android.provider.ItemProvider.NewItemsListener;
 
 import li.zeitgeist.api.Item;
 import android.graphics.Bitmap;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
