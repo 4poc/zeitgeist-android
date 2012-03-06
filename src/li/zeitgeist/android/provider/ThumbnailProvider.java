@@ -73,8 +73,6 @@ public class ThumbnailProvider implements UpdatedItemsListener {
     public interface LoadedThumbnailListener {
         public void onLoadedThumbnail(final int id, final Bitmap bitmap);
     }
-    
-    private Map<Integer, List<LoadedThumbnailListener>> loadedListeners;
 
     // in-memory cache
     private LruCache<Integer, Bitmap> memCache = null;
@@ -124,57 +122,8 @@ public class ThumbnailProvider implements UpdatedItemsListener {
             diskCache.mkdirs();
         }
         Log.d(TAG, "disk cache: " + diskCache.getAbsolutePath());
-        
-        // map of assigned thumbnail load listener by item id
-        loadedListeners = new HashMap<Integer, List<LoadedThumbnailListener>>();
-        
+
         videoOverlayBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.video_overlay);
-    }
-    
-    private void addLoadedListener(int id, LoadedThumbnailListener listener) {
-        synchronized (loadedListeners) {
-            List<LoadedThumbnailListener> list = loadedListeners.get(id);
-            if (list == null) {
-                list = new ArrayList<LoadedThumbnailListener>();
-                
-            }
-            
-            list.add(listener);
-            
-            loadedListeners.put(id, list);
-        }
-    }
-    
-    private List<LoadedThumbnailListener> getLoadedListeners(int id) {
-        synchronized (loadedListeners) {
-            return loadedListeners.get(id);
-        }
-    }
-    
-    private boolean hasLoadedListener(int id) {
-        synchronized (loadedListeners) {
-            return loadedListeners.containsKey(id);
-        }
-    }
-
-    private void removeLoadedListener(int id) {
-        synchronized (loadedListeners) {
-            loadedListeners.remove(id);
-        }
-    }
-    
-    private void callLoadedListener(int id, Bitmap bitmap) {
-
-        List<LoadedThumbnailListener> listeners = getLoadedListeners(id);
-        
-        if (bitmap != null) {
-            for (LoadedThumbnailListener listener : listeners) {
-                
-                listener.onLoadedThumbnail(id, bitmap);
-            }
-        }
-        
-        removeLoadedListener(id);
     }
 
     /**
@@ -185,22 +134,10 @@ public class ThumbnailProvider implements UpdatedItemsListener {
      */
     public void loadThumbnail(final Item item, 
       final LoadedThumbnailListener loadedListener) {
-        // store the loaded thumbnail listener,
-        boolean alreadyLoading = hasLoadedListener(item.getId());
-        
-
-        addLoadedListener(item.getId(), loadedListener);
-        
-        
-        if (alreadyLoading) {
-            Log.v(TAG, "alreadyLoading, do not submit new thumb download ID: " + String.valueOf(item.getId()));
-            // return; // stop if already loading somewhere else
-        }
-
         pool.submit(new Runnable() {
             public void run() {
                 Bitmap bitmap = getBitmapByItem(item);
-                callLoadedListener(item.getId(), bitmap);
+                loadedListener.onLoadedThumbnail(item.getId(), bitmap);
             }
         });
     }

@@ -67,7 +67,7 @@ public class SeekBarPreference extends DialogPreference implements SeekBar.OnSee
     
     private void textViewValueUpdate() {
         if (textView != null) {
-            textView.setText(String.valueOf(value));
+            textView.setText(String.valueOf(value+50));
         }
     }
 

@@ -175,7 +175,7 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
     
     public void updateThumbnailSize() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-        thumbMinWidth = prefs.getInt("thumbnailSize", 120);
+        thumbMinWidth = prefs.getInt("thumbnailSize", 70) + 50;
 
         numColumns = (int) Math.ceil(screenWidth / thumbMinWidth);
         int targetWidth = (int) Math.floor(screenWidth / numColumns);

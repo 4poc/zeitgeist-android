@@ -17,8 +17,8 @@ public class SettingsActivity extends PreferenceActivity implements OnPreference
                 (SeekBarPreference) findPreference("thumbnailSize");
         
         // TODO: don't hardcode this:
-        thumbnailPreference.setDefaultValue(120);
-        thumbnailPreference.setMax(200);
+        thumbnailPreference.setDefaultValue(70);
+        thumbnailPreference.setMax(150);
         
         thumbnailPreference.setOnPreferenceChangeListener(this);
     }
