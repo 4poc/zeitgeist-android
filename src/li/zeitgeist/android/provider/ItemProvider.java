@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Vector;
@@ -49,12 +50,12 @@ public class ItemProvider extends Thread {
      * Informs about a changed position cache. New or deleted
      * items etc.
      */
-    public interface NewItemsListener {
-        public void onNewItems(List<Item> newItemsList);
+    public interface UpdatedItemsListener {
+        public void onUpdatedItems(List<Item> newItemsList);
     }
 
     //private NewItemsListener newListener = null;
-    private List<NewItemsListener> newListener;
+    private List<UpdatedItemsListener> newListener;
 
     /**
      * Cached position, each time this is changed the adapter
@@ -66,13 +67,13 @@ public class ItemProvider extends Thread {
      * Cached item objects by Id.
      */
     private SortedMap<Integer, Item> itemCache;
+    
+    
+    private boolean filterVideos = true;
+    
+    private boolean filterImages = false;
 
-    // first and last item ids that are present in the cache
-    // the cache gets only populated in ranges, so you can
-    // assume that every item inbetween are present
-    private int firstId = -1;
-    private int lastId = -1;
-
+    
     // thread handler allows to execute code within this thread
     Handler handler;
     
@@ -87,10 +88,10 @@ public class ItemProvider extends Thread {
         itemCache = new TreeMap<Integer, Item>();
         positionCache = new Vector<Integer>();
         
-        newListener = new Vector<NewItemsListener>();
+        newListener = new Vector<UpdatedItemsListener>();
     }
 
-    public void addNewItemsListener(NewItemsListener listener) {
+    public void addNewItemsListener(UpdatedItemsListener listener) {
     	newListener.add(listener);
     }
 
@@ -109,11 +110,23 @@ public class ItemProvider extends Thread {
     }
 
     public void queryOlderItems() {
+        int firstId = -1;
+        
+        if (itemCache.size() >= 0) {
+            firstId = itemCache.firstKey();
+        }
+        
         queryItems(-1, firstId);
     }
 
     public void queryNewerItems() {
-        queryItems(lastId, -1);
+        int lastId = -1;
+        
+        if (itemCache.size() >= 0) {
+            lastId = itemCache.lastKey();
+        }
+        
+        queryItems(lastId, -1);       
     }
 
     private void queryItems(final int after, final int before) {
@@ -140,42 +153,24 @@ public class ItemProvider extends Thread {
                     Log.d(TAG, "Query returned " + String.valueOf(newItemsList.size()) + " items.");
 
                     for (Item item : newItemsList) {
-                        // ignore items without images
-                        if (item.getType() != Type.IMAGE ||
-                          item.getImage() == null) {
-                            newItemsList.remove(item);
-                            continue;
-                        }
-                        
                         itemCache.put(item.getId(), item);
                     }
-                    
-                    firstId = itemCache.firstKey();
-                    lastId = itemCache.lastKey();
-                    Log.d(TAG, "firstId:"+String.valueOf(firstId)+" lastId:"+String.valueOf(lastId));
-                    
-                    // update/rebuild position cache
-                    List<Integer> newPositionCache = new Vector<Integer>();
-                    Iterator<Integer> iter = itemCache.keySet().iterator();
-                    while (iter.hasNext()) {
-                        newPositionCache.add(iter.next());
-                    }
-                    Collections.reverse(newPositionCache);
-                    positionCache = newPositionCache;
 
+                    // update/rebuild position cache
+                    createPositionCache();
+
+                    // inform the listeners that the something has changed
+                    callUpdatedItems(newItemsList);
+
+                    // finish loading stuff
                 	loading = false;
-                    if (newListener != null) {
-                    	// call the listener callback in ui thread
-                    	for (NewItemsListener listener : newListener) {
-                    		listener.onNewItems(newItemsList);
-                    	}
-                    }
 
                 } catch (ZeitgeistError e) {
                     e.printStackTrace();
                     
                 }
             }
+
         });
     }
 
@@ -214,6 +209,83 @@ public class ItemProvider extends Thread {
     }
     
 
+    /**
+     * Create sorted position cache with item IDs.
+     * 
+     * The position cache is used by the gridview adapter for
+     * position(list index) -> item ID mapping. Thats also the
+     * place where images or videos are ignored and in the future
+     * it should also be possible to tell the itemProvider only
+     * to show items with specific tags or other things.
+     */
+    private void createPositionCache() {
+        // TODO Auto-generated method stub
+        List<Integer> newPositionCache = new Vector<Integer>();
+        
+        Iterator<Entry<Integer, Item>> iter = itemCache.entrySet().iterator();
+        while(iter.hasNext()) {
+            Item item = iter.next().getValue();
+            
+            // filtering by type
+            Type type = item.getType();
+            if ( (type == Type.AUDIO) ||
+                 (type == Type.VIDEO && filterVideos) ||    
+                 (type == Type.IMAGE && filterImages) ) {
+                continue;
+            }
+
+            newPositionCache.add(item.getId());
+        }
+        Collections.reverse(newPositionCache);
+        positionCache = newPositionCache;
+    }
+    
+    /**
+     * Informs the listeners about a changed positionCache.
+     * 
+     * This means either a change in the filtering settings (filterImages,
+     * filterVideos, etc.) that triggered a changed positionCache,
+     * or that newer or older items had been downloaded.
+     * 
+     * @param newItemsList (optional) list of items
+     */
+    private void callUpdatedItems(List<Item> newItemsList) {
+        if (newListener != null) {
+            // call the listener callback in ui thread
+            for (UpdatedItemsListener listener : newListener) {
+                listener.onUpdatedItems(newItemsList);
+            }
+        }
+    }
+
+    public void setFilterVideos(boolean filterVideos) {
+        this.filterVideos = filterVideos;
+        
+        // update position cache (based on the changed filtering)
+        createPositionCache();
+        
+        // inform the listeners about it (triggers UI change)
+        callUpdatedItems(null);
+    }
+    
+    public void setFilterImages(boolean filterImages) {
+        this.filterImages = filterImages;
+        
+        // update position cache (based on the changed filtering)
+        createPositionCache();
+        
+        // inform the listeners about it (triggers UI change)
+        callUpdatedItems(null);
+    }
+    
+    public boolean getFilterVideos() {
+        return filterVideos;
+    }
+
+    public boolean getFilterImages() {
+        return filterImages;
+    }
+    
 }
 
 

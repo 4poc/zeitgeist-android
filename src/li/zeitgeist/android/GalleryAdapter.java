@@ -20,7 +20,7 @@ package li.zeitgeist.android;
 import java.util.List;
 
 import li.zeitgeist.android.provider.*;
-import li.zeitgeist.android.provider.ItemProvider.NewItemsListener;
+import li.zeitgeist.android.provider.ItemProvider.UpdatedItemsListener;
 
 import li.zeitgeist.api.Item;
 import android.graphics.Bitmap;
@@ -29,7 +29,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 
-public class GalleryAdapter extends BaseAdapter implements NewItemsListener {
+public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener {
 
     private static final String TAG = ZeitgeistApp.TAG + ":GalleryAdapter";
     
@@ -63,18 +63,22 @@ public class GalleryAdapter extends BaseAdapter implements NewItemsListener {
         return getItem(position).getId();
     }
     
-    public void onNewItems(List<Item> newItems) {
+    public void onUpdatedItems(List<Item> newItems) {
         galleryActivity.getGridView().post(new Runnable() {
             public void run() {
+                Log.v(TAG, "NOTIFY DATASET CHANGED : " + String.valueOf(getCount()));
+                
                 galleryActivity.hideProgressDialog();
                 notifyDataSetChanged();
-                //itemProvider.queryOlderItems();
             }
         });
     }
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
+
+        Log.v(TAG, "getView, position: " + String.valueOf(position));
+        
         final View view;
         if (convertView == null) {
             // creates an empty view
@@ -87,19 +91,41 @@ public class GalleryAdapter extends BaseAdapter implements NewItemsListener {
         // hide previous image, show progress circle
         galleryActivity.showItemViewProgressBar(view);
         
+
+        
+        // last item also triggers the loading of older items
+        if (itemProvider.getItemCount() == position+1) {
+            itemProvider.queryOlderItems();
+            //return view;
+        }
+        
         final Item item = getItem(position);
+        
+        // tag this view with the item id
+        view.setTag(item.getId());
+        Log.v(TAG, "view tagged: " + String.valueOf(item.getId()));
+        
         if (thumbnailProvider.isMemCached(item)) {
+            Log.v(TAG, "updateItemView in ui thread, memcached: " + String.valueOf(item.getId()));
             galleryActivity.updateItemView(view, thumbnailProvider.getBitmapByItem(item));
         }
         else {
             // load bitmap from disk or web and update the view
             // within the UI thread, other loadThumbnail()'s override the callback
+            Log.v(TAG, "loadThumbnail() for id: " + String.valueOf(item.getId()));
             thumbnailProvider.loadThumbnail(item, 
                     new ThumbnailProvider.LoadedThumbnailListener() {
                 @Override
-                public void onLoadedThumbnail(final Bitmap bitmap) {
+                public void onLoadedThumbnail(final int id, final Bitmap bitmap) {
+
+                    Log.v(TAG, "onLoadedThumbnail callback returned for id: " + String.valueOf(id));
                     view.post(new Runnable() {
                         public void run() {
+                            if ((Integer) view.getTag() != id) {
+                                Log.w(TAG, "warning tag mismatch: " + String.valueOf(id) + " (tagged) item: " + String.valueOf((Integer)view.getTag()));
+                                return;
+                            }
+                            
                             galleryActivity.updateItemView(view, bitmap);
                         }
                     });

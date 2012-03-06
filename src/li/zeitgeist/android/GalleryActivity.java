@@ -25,11 +25,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 
 import android.view.*;
 import android.view.MenuItem.OnMenuItemClickListener;
+import android.view.View.OnClickListener;
 import android.widget.*;
 import android.widget.AbsListView.OnScrollListener;
 import android.widget.AdapterView.OnItemClickListener;
@@ -37,6 +40,7 @@ import android.widget.AdapterView.OnItemClickListener;
 import li.zeitgeist.android.provider.ItemProvider;
 import li.zeitgeist.android.provider.ThumbnailProvider;
 import li.zeitgeist.api.Item;
+import li.zeitgeist.api.Item.Type;
 
 public class GalleryActivity extends Activity implements OnScrollListener, OnItemClickListener, OnMenuItemClickListener {
 
@@ -60,9 +64,7 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
     private int thumbWidth;
     private int numColumns;
     private int scrollThreshold = 5;
-    
-    
-    
+
     GalleryAdapter adapter;
 
     public GalleryActivity() {
@@ -70,18 +72,13 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         Log.v(TAG, "constructed");
     }
     
-    public GridView getGridView() {
-        return gridView;
-    
-    
-    }
-    
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.v(TAG, "onCreate()");
 
-        
+        // get the global provider instances
         itemProvider = ((ZeitgeistApp)getApplication()).getItemProvider();
         thumbnailProvider = ((ZeitgeistApp)getApplication()).getThumbnailProvider();
 
@@ -91,29 +88,89 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         // Set main layout
         setContentView(R.layout.gallery);
         
+        // set the screen width (800 or 480 on desire z)
         Display display = getWindowManager().getDefaultDisplay();
         screenWidth = display.getWidth() - 4; /* FIXME: where the 2 spacing coming from? */
-        
-        updateThumbnailSize();
 
         // create adapter
         adapter = new GalleryAdapter(this, itemProvider, thumbnailProvider);
 
         // get the gallery gridview
-        gridView = (GridView)findViewById(R.id.thumbnailGrid);
+        gridView = (GridView) findViewById(R.id.thumbnailGrid);
         gridView.setHorizontalSpacing(THUMB_SPACING);
         gridView.setVerticalSpacing(THUMB_SPACING);
-        gridView.setColumnWidth(thumbWidth);
-        gridView.setNumColumns(numColumns);
         gridView.setAdapter(adapter);
-        gridView.setOnScrollListener(this);
+        // gridView.setOnScrollListener(this);
         gridView.setOnItemClickListener(this);
+        
+        // calculates and sets the thumbnail item size (thumbWidth)
+        updateThumbnailSize();
         
         // show progress dialog per default
         progressDialog = ProgressDialog.show(this, null, "Loading...", true);
         if (itemProvider.getItemCount() > 0) {
         	progressDialog.hide();
         }
+        
+        // gallery bar icons click listeners
+        final int bg = getResources().getColor(R.color.gallery_bar_active_icon_background);
+        final ImageView galleryBarFilterImagesIcon = 
+                (ImageView) findViewById(R.id.galleryBarFilterImagesIcon);
+        
+        galleryBarFilterImagesIcon.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (itemProvider.getFilterImages()) {
+                    // deactivate filtering
+                    itemProvider.setFilterImages(false);
+                    
+                    
+                    galleryBarFilterImagesIcon.setBackgroundColor(bg);
+                    
+                }
+                else {
+                    // activate filtering
+                    itemProvider.setFilterImages(true);
+                    
+                    galleryBarFilterImagesIcon.setBackgroundColor(Color.TRANSPARENT);
+                    
+                }
+            }});
+        
+        final ImageView galleryBarFilterVideosIcon = 
+                (ImageView) findViewById(R.id.galleryBarFilterVideosIcon);
+        
+        galleryBarFilterVideosIcon.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (itemProvider.getFilterVideos()) {
+                    // deactivate filtering
+                    itemProvider.setFilterVideos(false);
+                    
+                    
+                    
+                    galleryBarFilterVideosIcon.setBackgroundColor(bg);
+                    
+                }
+                else {
+                    // activate filtering
+                    itemProvider.setFilterVideos(true);
+                    
+                    galleryBarFilterVideosIcon.setBackgroundColor(Color.TRANSPARENT);
+                    
+                }
+            }});
+        
+        final ImageView galleryBarPreferencesIcon = 
+                (ImageView) findViewById(R.id.galleryBarPreferencesIcon);
+        
+        galleryBarPreferencesIcon.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent settingsActivity = new Intent(getBaseContext(), SettingsActivity.class);
+                startActivity(settingsActivity);
+                
+            }});
     }
     
     public void updateThumbnailSize() {
@@ -133,11 +190,12 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         Log.d(TAG, "scroll threshold set to " + String.valueOf(scrollThreshold));
 
         imageViewLayoutParams = new ViewSwitcher.LayoutParams(thumbWidth, thumbWidth);
-        
-        if (gridView != null) {
-            Log.d(TAG, "INVALIDATE gridView");
-            gridView.invalidateViews(); // TODO: does not work
-        }
+
+        // set the gridview properties, this will also refresh for different
+        // thumbnail sizes:
+        gridView.setColumnWidth(thumbWidth);
+        gridView.setNumColumns(numColumns);
+        gridView.invalidateViews();
     }
     
     @Override
@@ -267,11 +325,20 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         
         if (item == null) return;
         
-        Intent showItemActivityIntent = new Intent(this, ItemActivity.class);
-        Bundle itemIdBundle = new Bundle();
-        itemIdBundle.putInt("id", item.getId());
-        showItemActivityIntent.putExtras(itemIdBundle);
-        startActivity(showItemActivityIntent);
+        if (item.getType() == Type.VIDEO) {
+            Intent openLinkIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(item.getSource()));
+            startActivity(openLinkIntent);
+        }
+        else {
+            Intent showItemActivityIntent = new Intent(this, ItemActivity.class);
+            Bundle itemIdBundle = new Bundle();
+            itemIdBundle.putInt("id", item.getId());
+            showItemActivityIntent.putExtras(itemIdBundle);
+            startActivity(showItemActivityIntent);
+        }
+        
+
+
     }
 
     @Override
@@ -297,5 +364,10 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         return adapter;
     }
 
+    public GridView getGridView() {
+        return gridView;
+    }
+    
+    
 }
 

@@ -17,6 +17,8 @@
  */
 package li.zeitgeist.android.provider;
 
+import li.zeitgeist.android.R;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -26,6 +28,7 @@ import java.net.URL;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +36,9 @@ import java.util.Map;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Matrix;
+import android.graphics.Paint;
 
 import android.os.Environment;
 import android.os.Handler;
@@ -44,9 +50,10 @@ import android.view.View;
 import android.widget.ViewSwitcher;
 
 import li.zeitgeist.android.ZeitgeistApp;
-import li.zeitgeist.android.provider.ItemProvider.NewItemsListener;
+import li.zeitgeist.android.provider.ItemProvider.UpdatedItemsListener;
 
 import li.zeitgeist.api.Item;
+import li.zeitgeist.api.Item.Type;
 
 /**
  * Loads Item Thumbnails as Bitmaps.
@@ -57,17 +64,17 @@ import li.zeitgeist.api.Item;
  * the bitmaps: A LruCache with a fixed size and a disk cache on 
  * the sdcard.
  */
-public class ThumbnailProvider implements NewItemsListener {
+public class ThumbnailProvider implements UpdatedItemsListener {
 
     private static final String TAG = ZeitgeistApp.TAG + ":ThumbnailProvider";
 
     private static final int THREADS = 8;
 
     public interface LoadedThumbnailListener {
-        public void onLoadedThumbnail(final Bitmap bitmap);
+        public void onLoadedThumbnail(final int id, final Bitmap bitmap);
     }
     
-    private Map<Integer, LoadedThumbnailListener> loadedListeners;
+    private Map<Integer, List<LoadedThumbnailListener>> loadedListeners;
 
     // in-memory cache
     private LruCache<Integer, Bitmap> memCache = null;
@@ -77,6 +84,10 @@ public class ThumbnailProvider implements NewItemsListener {
 
     // the thread pool
     private ExecutorService pool;
+    
+    private Bitmap videoOverlayBitmap;
+    
+    private Context context;
 
     /**
      * Constructs the thumbnail loader.
@@ -89,6 +100,8 @@ public class ThumbnailProvider implements NewItemsListener {
         // start thread pool
         pool = Executors.newFixedThreadPool(THREADS);
 
+        this.context = context;
+        
         // initialize memory cache
         /*
         
@@ -113,16 +126,26 @@ public class ThumbnailProvider implements NewItemsListener {
         Log.d(TAG, "disk cache: " + diskCache.getAbsolutePath());
         
         // map of assigned thumbnail load listener by item id
-        loadedListeners = new HashMap<Integer, LoadedThumbnailListener>();
+        loadedListeners = new HashMap<Integer, List<LoadedThumbnailListener>>();
+        
+        videoOverlayBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.video_overlay);
     }
     
-    private void setLoadedListener(int id, LoadedThumbnailListener listener) {
+    private void addLoadedListener(int id, LoadedThumbnailListener listener) {
         synchronized (loadedListeners) {
-            loadedListeners.put(id, listener);
+            List<LoadedThumbnailListener> list = loadedListeners.get(id);
+            if (list == null) {
+                list = new ArrayList<LoadedThumbnailListener>();
+                
+            }
+            
+            list.add(listener);
+            
+            loadedListeners.put(id, list);
         }
     }
     
-    private LoadedThumbnailListener getLoadedListener(int id) {
+    private List<LoadedThumbnailListener> getLoadedListeners(int id) {
         synchronized (loadedListeners) {
             return loadedListeners.get(id);
         }
@@ -141,15 +164,16 @@ public class ThumbnailProvider implements NewItemsListener {
     }
     
     private void callLoadedListener(int id, Bitmap bitmap) {
-        LoadedThumbnailListener listener = getLoadedListener(id);
-        if (listener != null) {
-            if (bitmap != null) {
-                listener.onLoadedThumbnail(bitmap);
-            }
-            else {
-                Log.w(TAG, "got empty bitmap for id=" + String.valueOf(id));
+
+        List<LoadedThumbnailListener> listeners = getLoadedListeners(id);
+        
+        if (bitmap != null) {
+            for (LoadedThumbnailListener listener : listeners) {
+                
+                listener.onLoadedThumbnail(id, bitmap);
             }
         }
+        
         removeLoadedListener(id);
     }
 
@@ -163,9 +187,14 @@ public class ThumbnailProvider implements NewItemsListener {
       final LoadedThumbnailListener loadedListener) {
         // store the loaded thumbnail listener,
         boolean alreadyLoading = hasLoadedListener(item.getId());
-        setLoadedListener(item.getId(), loadedListener);
+        
+
+        addLoadedListener(item.getId(), loadedListener);
+        
+        
         if (alreadyLoading) {
-            return; // stop if already loading somewhere else
+            Log.v(TAG, "alreadyLoading, do not submit new thumb download ID: " + String.valueOf(item.getId()));
+            // return; // stop if already loading somewhere else
         }
 
         pool.submit(new Runnable() {
@@ -199,10 +228,42 @@ public class ThumbnailProvider implements NewItemsListener {
                 }
                 saveToDiskCache(item, bitmap);
             }
+            
+            // draws the video overlay into the bitmap (if the item is a video)
+            if (item.getType() == Type.VIDEO) {
+                bitmap = drawVideoOverlay(bitmap);
+            }
+            
             saveToMemCache(item, bitmap);
         }
         
         return bitmap;
+    }
+
+    private Bitmap drawVideoOverlay(Bitmap bitmap) {
+        //Canvas canvas = new Canvas(bitmap);
+        //Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+        
+        //canvas.setDensity(context.getResources().getDisplayMetrics().densityDpi);
+        //canvas.drawBitmap(videoOverlayBitmap, 0, 0, paint);
+        
+        Log.d(TAG, "bitmap width=" + String.valueOf(bitmap.getWidth()) + " height=" + String.valueOf(bitmap.getHeight()));
+        
+        Bitmap overlay = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
+        
+        bitmap.setDensity(context.getResources().getDisplayMetrics().densityDpi);
+        videoOverlayBitmap.setDensity(context.getResources().getDisplayMetrics().densityDpi);
+        overlay.setDensity(context.getResources().getDisplayMetrics().densityDpi);
+        
+        Canvas canvas = new Canvas(overlay);
+        
+        canvas.drawBitmap(bitmap, new Matrix(), null);
+        canvas.drawBitmap(videoOverlayBitmap, new Matrix(), null);
+        bitmap.recycle();
+        return overlay;
+
+        
+        //return bitmap;
     }
 
     private boolean isDiskCached(Item item) {
@@ -299,10 +360,12 @@ public class ThumbnailProvider implements NewItemsListener {
     }
 
 	@Override
-	public void onNewItems(List<Item> newItemsList) {
-		for (Item item : newItemsList) {
-		    loadThumbnail(item, null);
-		}
+	public void onUpdatedItems(List<Item> newItemsList) {
+	    if (newItemsList != null) {
+	        for (Item item : newItemsList) {
+	            loadThumbnail(item, null);
+	        }	        
+	    }
 	}
 
 

@@ -18,5 +18,6 @@ option) any later version.
 
 The following free icons were used and are included in the repository:
 
-* [Clock, Date, Time icon by Alexandre Moore](http://www.iconfinder.com/icondetails/2013/128/clock_date_time_icon) (LGPL)
+* Iconset: [Super Mono Stickers by Double-J designs](http://www.doublejdesign.co.uk/) (Creative Commons (Attribution 3.0 Unported))
+* [Clock, Date, Time icon by Alexandre Moore](http://sa-ki.deviantart.com/) (LGPL)
 * [Ghostview, Hosting icon by Oliver Scholtz (and others)](http://www.iconfinder.com/icondetails/23841/128/ghostview_hosting_icon) (Free for non commercial use)
