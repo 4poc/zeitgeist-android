@@ -15,8 +15,10 @@ public class SeekBarPreference extends DialogPreference implements SeekBar.OnSee
 
     private Context context;
     
+    private int defaultValue;
     private int value;
     private int max = 100;
+    private int min = 0;
     
     private SeekBar seekBar;
     private TextView textView = null;
@@ -46,7 +48,7 @@ public class SeekBarPreference extends DialogPreference implements SeekBar.OnSee
         seekBar.setLayoutParams(params);
         
         seekBar.setMax(max);
-        seekBar.setProgress(value);
+        seekBar.setProgress(value - min);
         
         seekBar.setOnSeekBarChangeListener(this);
 
@@ -123,7 +125,10 @@ public class SeekBarPreference extends DialogPreference implements SeekBar.OnSee
         if (seekBar != null) {
             seekBar.setMax(max);
         }
-        
+    }
+    
+    public void setMin(int min) {
+        this.min = min;
     }
     
 }

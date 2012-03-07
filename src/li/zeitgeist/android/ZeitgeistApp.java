@@ -43,7 +43,7 @@ public class ZeitgeistApp extends Application {
         thumbnailProvider = new ThumbnailProvider(this);
         
         // load the thumbnails of new items
-        itemProvider.addNewItemsListener(thumbnailProvider);
+        itemProvider.addUpdatedItemsListener(thumbnailProvider);
         
         itemProvider.start();
     }

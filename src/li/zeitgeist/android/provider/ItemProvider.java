@@ -17,49 +17,55 @@
  */
 package li.zeitgeist.android.provider;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import java.util.Vector;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import android.os.Handler;
-import android.os.Looper;
-
-import android.util.Log;
-
 import li.zeitgeist.android.ZeitgeistApp;
 
 import li.zeitgeist.api.*;
 import li.zeitgeist.api.Item.Type;
 import li.zeitgeist.api.error.ZeitgeistError;
 
-// holds a vector of items and downloads new ones upon request
+import java.util.*;
+import java.util.Map.Entry;
+
+import android.os.Handler;
+import android.os.Looper;
+
+import android.util.Log;
+
+/**
+ * ItemProvider for Item Objects.
+ * 
+ * Is running a thread to download the item list, also provides
+ * a position cache that is used for the position -> item id
+ * mapping necessary by the gridview adapter.
+ * 
+ * @author apoc
+ * @see GalleryAdapter
+ */
 public class ItemProvider extends Thread {
 
+    /**
+     * Standard android logging tag.
+     */
     public static final String TAG = ZeitgeistApp.TAG + ":ItemProvider";
 
-    /*
-     * Informs about a changed position cache. New or deleted
-     * items etc.
+    /**
+     * Interface for updated item listeners.
+     * 
+     * Implementing classes can be registered to be informed when
+     * the item position cache changed.
      */
     public interface UpdatedItemsListener {
         public void onUpdatedItems(List<Item> newItemsList);
     }
 
-    //private NewItemsListener newListener = null;
-    private List<UpdatedItemsListener> newListener;
+    /**
+     * List of updated items listener to inform.
+     */
+    private List<UpdatedItemsListener> updatedListeners;
 
     /**
      * Cached position, each time this is changed the adapter
-     * needs to be notified about it.
+     * needs to be notified about it via the updatedListeners.
      */
     private List<Integer> positionCache;
     
@@ -68,47 +74,95 @@ public class ItemProvider extends Thread {
      */
     private SortedMap<Integer, Item> itemCache;
     
-    
+    /**
+     * Filter items of type video from the position cache.
+     * 
+     * Other items are kept in the itemCache but are excluded
+     * from the positionCache.
+     */
     private boolean filterVideos = true;
     
+    /**
+     * Filter items of type image from the position cache.
+     * 
+     * Other items are kept in the itemCache but are excluded
+     * from the positionCache.
+     */
     private boolean filterImages = false;
-
     
-    // thread handler allows to execute code within this thread
-    Handler handler;
+    /**
+     * The handler for this thread, used to queue the item downloading on.
+     */
+    private Handler handler;
     
+    /**
+     * Is set to true during the downloading and processing of items.
+     */
     private boolean loading = false;
 
+    /**
+     * The Zeitgeist API instance.
+     */
     private ZeitgeistApi api;
 
+    /**
+     * Constructs but doesnt start a new Item Provider.
+     * 
+     * @param api the Zeitgeist API instance to use.
+     */
     public ItemProvider(ZeitgeistApi api) {
         this.api = api;
        
         // initialize caches, in-memory only atm.
         itemCache = new TreeMap<Integer, Item>();
         positionCache = new Vector<Integer>();
-        
-        newListener = new Vector<UpdatedItemsListener>();
+
+        // list of objects that implement the listener interface
+        updatedListeners = new Vector<UpdatedItemsListener>();
     }
 
-    public void addNewItemsListener(UpdatedItemsListener listener) {
-    	newListener.add(listener);
+    /**
+     * Add instance to the listeners for updated items.
+     * 
+     * @param listener
+     */
+    public void addUpdatedItemsListener(UpdatedItemsListener listener) {
+    	updatedListeners.add(listener);
     }
 
+    /**
+     * Query the positionCache for an Id, then return the item instance.
+     * 
+     * @param position
+     * @return item instance
+     * @see GalleryAdapter
+     */
     public Item getItemByPosition(int position) {
         int id = positionCache.get(position);
         return itemCache.get(id);
     }
     
+    /**
+     * Return item from cache by Id.
+     * @param id
+     * @return item
+     */
     public Item getItemById(int id) {
         return itemCache.get(id);
     }
     
-    // How many items are there currently availible
+    /**
+     * The size of the position cache.
+     * 
+     * @return size
+     */
     public int getItemCount() {
         return positionCache.size();
     }
 
+    /**
+     * Query for items that are older then whats in the cache.
+     */
     public void queryOlderItems() {
         int firstId = -1;
         
@@ -119,6 +173,9 @@ public class ItemProvider extends Thread {
         queryItems(-1, firstId);
     }
 
+    /**
+     * Query for items that are newer then whats in the cache.
+     */
     public void queryNewerItems() {
         int lastId = -1;
         
@@ -129,63 +186,78 @@ public class ItemProvider extends Thread {
         queryItems(lastId, -1);       
     }
 
+    /**
+     * Query for items that come after or before whats provided.
+     * 
+     * After and/or before can be -1 to ignore. They can not both
+     * be set.
+     * 
+     * @param after exclusive, the Id to search after (or -1 to ignore)
+     * @param before exclusive, search before the Id (or -1 to ignore)
+     */
     private void queryItems(final int after, final int before) {
-    	loading = true;
+    	loading = true; // true until the items are downloaded and processed
         handler.post(new Runnable() {
             public void run() {
-                Log.d(TAG, "Query Items: after="+String.valueOf(after)+" before="+String.valueOf(before));
+                Log.d(TAG, "list items with after=" + String.valueOf(after) +
+                        " before=" + String.valueOf(before));
 
                 try {
                     List<Item> newItemsList;
-
-                    if (after >= 0) {
+                    if (after > -1) {
                     	newItemsList = api.listAfter(after);
                     }
-                    else if (before >= 0) {
+                    else if (before > -1) {
                     	newItemsList = api.listBefore(before);
                     }
                     else {
                     	newItemsList = api.list();
                     }
-                    
-                    newItemsList = new CopyOnWriteArrayList<Item>(newItemsList);
 
-                    Log.d(TAG, "Query returned " + String.valueOf(newItemsList.size()) + " items.");
-
+                    // map the list to an hash with ID as key:
                     for (Item item : newItemsList) {
                         itemCache.put(item.getId(), item);
                     }
+                    
+                    Log.d(TAG, "put " + String.valueOf(itemCache.size()) + 
+                            " items in cache.");
 
                     // update/rebuild position cache
                     createPositionCache();
 
                     // inform the listeners that the something has changed
                     callUpdatedItems(newItemsList);
-
+                } catch (ZeitgeistError e) {
+                    Log.e(TAG, "Zeitgeist Error: " + e.getError());
+                } finally {
                     // finish loading stuff
                 	loading = false;
-
-                } catch (ZeitgeistError e) {
-                    e.printStackTrace();
-                    
                 }
             }
 
         });
     }
 
+    /**
+     * Stop the thread if alive.
+     */
     public synchronized void stopThread() {
     	loading = false;
         if (this.isAlive()) {
             handler.post(new Runnable() {
                 public void run() {
-                    Log.i(TAG, "Stopping thread!");
+                    Log.i(TAG, "stopping thread");
                     Looper.myLooper().quit();
                 }
             });
         }
     }
     
+    /**
+     * Return if items are currently being downloaded or processed.
+     * 
+     * @return loading boolean
+     */
     public boolean isLoading() {
     	return loading;
     }
@@ -219,7 +291,6 @@ public class ItemProvider extends Thread {
      * to show items with specific tags or other things.
      */
     private void createPositionCache() {
-        // TODO Auto-generated method stub
         List<Integer> newPositionCache = new Vector<Integer>();
         
         Iterator<Entry<Integer, Item>> iter = itemCache.entrySet().iterator();
@@ -250,14 +321,22 @@ public class ItemProvider extends Thread {
      * @param newItemsList (optional) list of items
      */
     private void callUpdatedItems(List<Item> newItemsList) {
-        if (newListener != null) {
+        if (updatedListeners != null) {
             // call the listener callback in ui thread
-            for (UpdatedItemsListener listener : newListener) {
+            for (UpdatedItemsListener listener : updatedListeners) {
                 listener.onUpdatedItems(newItemsList);
             }
         }
     }
 
+    /**
+     * Set the filter for videos.
+     * 
+     * If set to true, videos are ignored for the position cache
+     * (that is rebuilt)
+     * 
+     * @param filterVideos
+     */
     public void setFilterVideos(boolean filterVideos) {
         this.filterVideos = filterVideos;
         
@@ -268,6 +347,14 @@ public class ItemProvider extends Thread {
         callUpdatedItems(null);
     }
     
+    /**
+     * Set the filter for images.
+     * 
+     * If set to true, images are ignored for the position cache
+     * (that is rebuilt)
+     * 
+     * @param filterImages
+     */
     public void setFilterImages(boolean filterImages) {
         this.filterImages = filterImages;
         
@@ -278,10 +365,20 @@ public class ItemProvider extends Thread {
         callUpdatedItems(null);
     }
     
+    /**
+     * Return filterVideos attribute.
+     * 
+     * @return filterVideos boolean
+     */
     public boolean getFilterVideos() {
         return filterVideos;
     }
 
+    /**
+     * Return filterImages attribute.
+     * 
+     * @return filterImages boolean
+     */
     public boolean getFilterImages() {
         return filterImages;
     }

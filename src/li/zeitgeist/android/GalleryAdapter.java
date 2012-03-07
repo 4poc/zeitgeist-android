@@ -45,7 +45,7 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
         this.itemProvider = itemProvider;
         this.thumbnailProvider = thumbnailProvider;
         
-        itemProvider.addNewItemsListener(this);
+        itemProvider.addUpdatedItemsListener(this);
     }
 
     @Override
