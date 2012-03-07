@@ -19,6 +19,7 @@
 package li.zeitgeist.android;
 
 import android.app.Application;
+import android.preference.PreferenceManager;
 
 import li.zeitgeist.android.provider.ItemProvider;
 import li.zeitgeist.android.provider.ThumbnailProvider;
@@ -38,6 +39,8 @@ public class ZeitgeistApp extends Application {
 
     public void onCreate() {
         super.onCreate();
+        
+        PreferenceManager.setDefaultValues(this, R.xml.preference, false);
         
         itemProvider = new ItemProvider(new ZeitgeistApi(BASE_URL));
         thumbnailProvider = new ThumbnailProvider(this);

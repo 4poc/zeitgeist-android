@@ -5,6 +5,8 @@
         <li.zeitgeist.android.preference.SeekBarPreference
              android:title="Thumbnail Size"
              android:key="thumbnailSize"
+             android:defaultValue="120"
+             android:summary="The approximate size."
              />
 
     </PreferenceCategory>

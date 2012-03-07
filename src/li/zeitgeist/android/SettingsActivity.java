@@ -12,13 +12,12 @@ public class SettingsActivity extends PreferenceActivity implements OnPreference
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.xml.preference);
         
-        
         SeekBarPreference thumbnailPreference = 
                 (SeekBarPreference) findPreference("thumbnailSize");
         
         // TODO: don't hardcode this:
-        thumbnailPreference.setDefaultValue(70);
-        thumbnailPreference.setMax(150);
+        thumbnailPreference.setMin(50);
+        thumbnailPreference.setMax(200);
         
         thumbnailPreference.setOnPreferenceChangeListener(this);
     }

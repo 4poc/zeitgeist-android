@@ -10,29 +10,33 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 public class SeekBarPreference extends DialogPreference implements SeekBar.OnSeekBarChangeListener {
-    
-    // private static final String androidns="http://schemas.android.com/apk/res/android";
+
+    private static final String androidns="http://schemas.android.com/apk/res/android";
 
     private Context context;
     
     private int defaultValue;
     private int value;
-    private int max = 100;
     private int min = 0;
+    private int max = 200;
     
     private SeekBar seekBar;
-    private TextView textView = null;
+    private TextView textView;
 
     public SeekBarPreference(Context context, AttributeSet attrs) {
         super(context, attrs);
         this.context = context;
         
-        // String title = attrs.getAttributeValue(androidns, "title");
+        defaultValue = attrs.getAttributeIntValue(androidns, "defaultValue", 0);
     }
     
     @Override 
     protected View onCreateDialogView() {
         super.onCreateDialogView();
+        
+        if (shouldPersist()) {
+            value = getPersistedInt(defaultValue);
+        }
 
         LinearLayout layout = new LinearLayout(context);
         
@@ -47,8 +51,7 @@ public class SeekBarPreference extends DialogPreference implements SeekBar.OnSee
         
         seekBar.setLayoutParams(params);
         
-        seekBar.setMax(max);
-        seekBar.setProgress(value - min);
+        updateSeekBar();
         
         seekBar.setOnSeekBarChangeListener(this);
 
@@ -56,7 +59,7 @@ public class SeekBarPreference extends DialogPreference implements SeekBar.OnSee
 
         textView = new TextView(context);
         
-        textViewValueUpdate();
+        updateTextView();
         
         textView.setGravity(Gravity.CENTER);
         
@@ -67,43 +70,49 @@ public class SeekBarPreference extends DialogPreference implements SeekBar.OnSee
         return layout;
     }
     
-    private void textViewValueUpdate() {
+    private void updateTextView() {
         if (textView != null) {
-            textView.setText(String.valueOf(value+50));
+            textView.setText(String.valueOf(value));
         }
     }
 
     @Override 
     protected void onBindDialogView(View v) {
         super.onBindDialogView(v);
-        seekBar.setMax(max);
-        seekBar.setProgress(value);
+        updateSeekBar();
+    }
+    
+    private void updateSeekBar() {
+        seekBar.setMax(max - min);
+        seekBar.setProgress(value - min);
     }
 
     @Override
-    protected void onSetInitialValue(boolean restore, Object defaultValue) {
-        super.onSetInitialValue(restore, defaultValue);
-        if (restore) {
-            value = shouldPersist() ? getPersistedInt(120) : 120;
+    protected void onSetInitialValue(boolean restore, Object defaultValueObj) {
+        super.onSetInitialValue(restore, defaultValueObj);
+        int defaultValue = 42;
+        if (defaultValueObj != null) {
+            defaultValue = (Integer) defaultValueObj;
         }
-        else if (defaultValue != null) {
-            value = (Integer) defaultValue;
+        
+        if (restore) {
+            value = shouldPersist() ? getPersistedInt(defaultValue) : defaultValue;
         }
         else {
-            value = 120;
+            value = defaultValue;
         }
 
-        textViewValueUpdate();
+        updateTextView();
     }
 
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-        value = progress;
+        value = progress + min;
         if (shouldPersist()) {
             persistInt(value);
         }
         callChangeListener(new Integer(value));
-        textViewValueUpdate();
+        updateTextView();
     }
 
     @Override
@@ -130,5 +139,6 @@ public class SeekBarPreference extends DialogPreference implements SeekBar.OnSee
     public void setMin(int min) {
         this.min = min;
     }
+    
     
 }
