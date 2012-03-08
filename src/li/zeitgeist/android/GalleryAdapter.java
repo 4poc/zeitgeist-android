@@ -66,10 +66,18 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
     public void onUpdatedItems(List<Item> newItems) {
         galleryActivity.getGridView().post(new Runnable() {
             public void run() {
-                Log.v(TAG, "NOTIFY DATASET CHANGED : " + String.valueOf(getCount()));
-                
                 galleryActivity.hideProgressDialog();
                 notifyDataSetChanged();
+            }
+        });
+    }
+
+    public void onError(final String error) {
+        galleryActivity.getGridView().post(new Runnable() {
+            public void run() {
+                Log.v(TAG, "onError called");
+                galleryActivity.hideProgressDialog();
+                galleryActivity.showErrorAlert(error);
             }
         });
     }

@@ -17,6 +17,10 @@
  */
 package li.zeitgeist.android;
 
+import android.app.AlertDialog;
+
+import android.content.DialogInterface;
+
 import android.text.ClipboardManager;
 import android.util.*;
 import android.app.Activity;
@@ -125,6 +129,13 @@ public class GalleryActivity extends Activity
         
         // change the background based on the settings of itemProvider
         listener.updateShowItems();
+        
+        if (!itemProvider.isAlive()) {
+            itemProvider.start();
+        }
+        else {
+            itemProvider.queryFirstItems();
+        }
     }
     
     public void updateThumbnailSize() {
@@ -173,6 +184,18 @@ public class GalleryActivity extends Activity
     		// progressDialog.dismiss(); this causes an exception
     		progressDialog.hide();
     	}
+    }
+
+    public void showErrorAlert(String error) {
+        // new AlertDialog.Builder(this).setTitle("Error").setMessage(error);
+        AlertDialog alertDialog = new AlertDialog.Builder(this).create();  
+    alertDialog.setTitle("Error");  
+    alertDialog.setMessage(error);
+    alertDialog.setButton("OK", new DialogInterface.OnClickListener() {  
+      public void onClick(DialogInterface dialog, int which) {  
+        return;  
+    } });   
+    alertDialog.show();
     }
     
 	@Override
@@ -341,18 +364,18 @@ public class GalleryActivity extends Activity
         public void updateShowItems() {
             View showImagesView = findViewById(R.id.galleryBarShowImagesIcon);
             if (itemProvider.getHideImages()) {
-                setViewBackground(showImagesView, true);
+                setViewBackground(showImagesView, false);
             }
             else {
-                setViewBackground(showImagesView, false);
+                setViewBackground(showImagesView, true);
             }
 
             View showVideosView = findViewById(R.id.galleryBarShowVideosIcon);
             if (itemProvider.getHideVideos()) {
-                setViewBackground(showVideosView, true);
+                setViewBackground(showVideosView, false);
             }
             else {
-                setViewBackground(showVideosView, false);
+                setViewBackground(showVideosView, true);
             }
         }
         

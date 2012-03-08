@@ -296,6 +296,9 @@ public class ThumbnailProvider implements UpdatedItemsListener {
 	    }
 	}
 
+    public void onError(String error) {
+    }
+
 
 }
 

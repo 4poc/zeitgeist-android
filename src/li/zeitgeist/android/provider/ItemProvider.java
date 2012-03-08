@@ -56,6 +56,7 @@ public class ItemProvider extends Thread {
      */
     public interface UpdatedItemsListener {
         public void onUpdatedItems(List<Item> newItemsList);
+        public void onError(final String error);
     }
 
     /**
@@ -160,6 +161,10 @@ public class ItemProvider extends Thread {
         return positionCache.size();
     }
 
+    public void queryFirstItems() {
+        queryItems(-1, -1);
+    }
+
     /**
      * Query for items that are older then whats in the cache.
      */
@@ -229,6 +234,12 @@ public class ItemProvider extends Thread {
                     callUpdatedItems(newItemsList);
                 } catch (ZeitgeistError e) {
                     Log.e(TAG, "Zeitgeist Error: " + e.getError());
+                    if (updatedListeners != null) {
+                        // call the listener callback in ui thread
+                        for (UpdatedItemsListener listener : updatedListeners) {
+                            listener.onError(e.getError());
+                        }
+                    }
                 } finally {
                     // finish loading stuff
                 	loading = false;
@@ -268,10 +279,7 @@ public class ItemProvider extends Thread {
             Looper.prepare();
 
             handler = new Handler();
-
-            // start by query the latest page (frontpage)
-            // with the newest items
-            queryItems(-1, -1);
+            queryFirstItems();
 
             Looper.loop(); // gogogo!
         }

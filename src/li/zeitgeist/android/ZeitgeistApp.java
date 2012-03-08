@@ -48,8 +48,6 @@ public class ZeitgeistApp extends Application {
         
         // load the thumbnails of new items
         itemProvider.addUpdatedItemsListener(thumbnailProvider);
-        
-        itemProvider.start();
     }
 
     public ItemProvider getItemProvider() {
@@ -68,7 +66,7 @@ public class ZeitgeistApp extends Application {
         String apiSecret =  prefs.getString("apiSecret", ""); 
 
         if (baseUrl.endsWith("/")) {
-            baseUrl = baseUrl.substring(0, baseUrl.length() - 2);
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
         }
 
         return new ZeitgeistApi(baseUrl, eMail, apiSecret);
