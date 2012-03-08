@@ -30,12 +30,16 @@ import android.view.MenuItem.OnMenuItemClickListener;
 import android.widget.*;
 import android.webkit.*;
 
+import li.zeitgeist.api.ZeitgeistApi;
+
 public class ItemActivity extends Activity implements OnMenuItemClickListener {
 
     private static final String TAG = ZeitgeistApp.TAG + ":ItemActivity";
     
     // private ThumbnailProvider thumbnailProvider;
     private ItemProvider itemProvider;
+
+    private ZeitgeistApi api;
     
     private Item item;
     
@@ -52,6 +56,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         
         itemProvider = ((ZeitgeistApp)getApplication()).getItemProvider();
         // thumbnailProvider = ((ZeitgeistApp)getApplication()).getThumbnailProvider();
+        api = ((ZeitgeistApp)getApplication()).getApi();
 
         // Disable the title bar
         requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -100,7 +105,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
           }
         });
         
-        webView.loadUrl(ZeitgeistApp.BASE_URL + item.getImage().getImage());
+        webView.loadUrl(api.getBaseUrl() + item.getImage().getImage());
         
     }
     
@@ -142,7 +147,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
             
         case R.id.itemMenuCopyUrlItem:
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            clipboard.setText(ZeitgeistApp.BASE_URL + item.getImage().getImage());
+            clipboard.setText(api.getBaseUrl() + item.getImage().getImage());
             Toast.makeText(this, "URL Copied", Toast.LENGTH_SHORT).show();
             break;
         }

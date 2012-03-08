@@ -36,6 +36,8 @@ import android.graphics.*;
 import android.support.v4.util.LruCache;
 import android.util.Log;
 
+import li.zeitgeist.api.ZeitgeistApi;
+
 /**
  * Concurrently loads thumbnail bitmaps and cache them on disk and memory.
  *
@@ -75,16 +77,20 @@ public class ThumbnailProvider implements UpdatedItemsListener {
     
     private Bitmap videoOverlayBitmap;
     
+    private ZeitgeistApi api;
+  
     /**
      * Constructs the thumbnail loader.
      *
      * This starts the thread pool, initializes the memory cache,
      * and creates the directories for the disk-cache (if necessary).
      */
-    public ThumbnailProvider(Context context) {
+    public ThumbnailProvider(Context context, ZeitgeistApi api) {
         Log.v(TAG, "constructed");
         // start thread pool
         pool = Executors.newFixedThreadPool(THREADS);
+
+        this.api = api;
         
         // initialize memory cache
         /*
@@ -259,7 +265,7 @@ public class ThumbnailProvider implements UpdatedItemsListener {
      * @return bitmap
      */
     private Bitmap loadFromWeb(Item item) {
-        String url = ZeitgeistApp.BASE_URL + item.getImage().getThumbnail();
+        String url = api.getBaseUrl() + item.getImage().getThumbnail();
         Log.d(TAG, "load from web " + url);
         Bitmap bitmap = null;
         InputStream in = null;

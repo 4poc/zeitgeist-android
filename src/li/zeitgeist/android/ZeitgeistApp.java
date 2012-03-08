@@ -19,6 +19,8 @@
 package li.zeitgeist.android;
 
 import android.app.Application;
+
+import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
 import li.zeitgeist.android.provider.ItemProvider;
@@ -28,7 +30,6 @@ import li.zeitgeist.api.ZeitgeistApi;
 public class ZeitgeistApp extends Application {
 
     public static final String TAG = "Zeitgeist";
-    public static final String BASE_URL = "http://zeitgeist.li"; // for now
 
     private ItemProvider itemProvider;
     private ThumbnailProvider thumbnailProvider;
@@ -42,8 +43,8 @@ public class ZeitgeistApp extends Application {
         
         PreferenceManager.setDefaultValues(this, R.xml.preference, false);
         
-        itemProvider = new ItemProvider(new ZeitgeistApi(BASE_URL));
-        thumbnailProvider = new ThumbnailProvider(this);
+        itemProvider = new ItemProvider(getApi());
+        thumbnailProvider = new ThumbnailProvider(this, getApi());
         
         // load the thumbnails of new items
         itemProvider.addUpdatedItemsListener(thumbnailProvider);
@@ -57,6 +58,20 @@ public class ZeitgeistApp extends Application {
 
     public ThumbnailProvider getThumbnailProvider() {
         return thumbnailProvider;
+    }
+
+    public ZeitgeistApi getApi() {
+        SharedPreferences prefs = 
+            PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        String baseUrl = prefs.getString("baseUrl", "http://zeitgeist.li");
+        String eMail = prefs.getString("eMail", ""); 
+        String apiSecret =  prefs.getString("apiSecret", ""); 
+
+        if (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 2);
+        }
+
+        return new ZeitgeistApi(baseUrl, eMail, apiSecret);
     }
     
 }

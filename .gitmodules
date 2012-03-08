@@ -1,3 +1,3 @@
 [submodule "api"]
 	path = api
-	url = file:///home/apoc/projects/java/zeitgeist-api
+	url = git://github.com/4poc/zeitgeist-api.git

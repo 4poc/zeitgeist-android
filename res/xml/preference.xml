@@ -11,5 +11,28 @@
 
     </PreferenceCategory>
     
+    <PreferenceCategory android:title="Server">
+        <EditTextPreference
+            android:title="Base URL"
+            android:summary="Pointing to the webroot of your zeitgeist installation."
+            android:key="baseUrl"
+            android:defaultValue="http://zeitgeist.li"
+            />
+
+        <EditTextPreference
+            android:title="eMail"
+            android:key="eMail"
+            android:defaultValue=""
+            android:summary="Optional eMail for authentication."
+            />
+
+        <EditTextPreference
+            android:title="API Secret"
+            android:key="apiSecret"
+            android:defaultValue=""
+            android:summary="Optional secret for authentication."
+            />
+            
+    </PreferenceCategory>
 
 </PreferenceScreen>
