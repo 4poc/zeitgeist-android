@@ -29,16 +29,16 @@
                 android:src="@drawable/bar_preferences" />
 
             <ImageView
-                android:id="@+id/galleryBarFilterVideosIcon"
+                android:id="@+id/galleryBarShowVideosIcon"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/bar_video" />
 
             <ImageView
-                android:id="@+id/galleryBarFilterImagesIcon"
+                android:id="@+id/galleryBarShowImagesIcon"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@color/gallery_bar_active_icon_background"
+                android:background="@color/gallery_bar_active"
                 android:src="@drawable/bar_image" />
         </LinearLayout>
     </LinearLayout>

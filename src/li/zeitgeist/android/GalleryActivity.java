@@ -42,7 +42,9 @@ import li.zeitgeist.android.provider.ThumbnailProvider;
 import li.zeitgeist.api.Item;
 import li.zeitgeist.api.Item.Type;
 
-public class GalleryActivity extends Activity implements OnScrollListener, OnItemClickListener, OnMenuItemClickListener {
+public class GalleryActivity extends Activity 
+  implements OnScrollListener, OnItemClickListener, OnMenuItemClickListener {
+
 
     private static final String TAG = ZeitgeistApp.TAG + ":GalleryActivity";
 
@@ -112,65 +114,17 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         	progressDialog.hide();
         }
         
-        // gallery bar icons click listeners
-        final int bg = getResources().getColor(R.color.gallery_bar_active_icon_background);
-        final ImageView galleryBarFilterImagesIcon = 
-                (ImageView) findViewById(R.id.galleryBarFilterImagesIcon);
+        // gallery bar (icon header bar) assigns onclick listener
+        GalleryBarOnClickListener listener = new GalleryBarOnClickListener();
+        ((ImageView) findViewById(R.id.galleryBarShowImagesIcon))
+            .setOnClickListener(listener);
+        ((ImageView) findViewById(R.id.galleryBarShowVideosIcon))
+            .setOnClickListener(listener);
+        ((ImageView) findViewById(R.id.galleryBarPreferencesIcon))
+            .setOnClickListener(listener);
         
-        galleryBarFilterImagesIcon.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (itemProvider.getFilterImages()) {
-                    // deactivate filtering
-                    itemProvider.setFilterImages(false);
-                    
-                    
-                    galleryBarFilterImagesIcon.setBackgroundColor(bg);
-                    
-                }
-                else {
-                    // activate filtering
-                    itemProvider.setFilterImages(true);
-                    
-                    galleryBarFilterImagesIcon.setBackgroundColor(Color.TRANSPARENT);
-                    
-                }
-            }});
-        
-        final ImageView galleryBarFilterVideosIcon = 
-                (ImageView) findViewById(R.id.galleryBarFilterVideosIcon);
-        
-        galleryBarFilterVideosIcon.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (itemProvider.getFilterVideos()) {
-                    // deactivate filtering
-                    itemProvider.setFilterVideos(false);
-                    
-                    
-                    
-                    galleryBarFilterVideosIcon.setBackgroundColor(bg);
-                    
-                }
-                else {
-                    // activate filtering
-                    itemProvider.setFilterVideos(true);
-                    
-                    galleryBarFilterVideosIcon.setBackgroundColor(Color.TRANSPARENT);
-                    
-                }
-            }});
-        
-        final ImageView galleryBarPreferencesIcon = 
-                (ImageView) findViewById(R.id.galleryBarPreferencesIcon);
-        
-        galleryBarPreferencesIcon.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent settingsActivity = new Intent(getBaseContext(), SettingsActivity.class);
-                startActivity(settingsActivity);
-                
-            }});
+        // change the background based on the settings of itemProvider
+        listener.updateShowItems();
     }
     
     public void updateThumbnailSize() {
@@ -372,6 +326,82 @@ public class GalleryActivity extends Activity implements OnScrollListener, OnIte
         return gridView;
     }
     
+    
+    private class GalleryBarOnClickListener implements OnClickListener {
+        
+        /**
+         * Used as a background color to indicate the active element.
+         */
+        private int active_color;
+        
+        public GalleryBarOnClickListener() {
+            active_color = getResources().getColor(R.color.gallery_bar_active);
+        }
+        
+        public void updateShowItems() {
+            View showImagesView = findViewById(R.id.galleryBarShowImagesIcon);
+            if (itemProvider.getHideImages()) {
+                setViewBackground(showImagesView, true);
+            }
+            else {
+                setViewBackground(showImagesView, false);
+            }
+
+            View showVideosView = findViewById(R.id.galleryBarShowVideosIcon);
+            if (itemProvider.getHideVideos()) {
+                setViewBackground(showVideosView, true);
+            }
+            else {
+                setViewBackground(showVideosView, false);
+            }
+        }
+        
+        private void setViewBackground(View view, boolean active) {
+            if (active) {
+                view.setBackgroundColor(active_color);
+            }
+            else {
+                view.setBackgroundColor(Color.TRANSPARENT);
+            }
+        }
+        
+        @Override
+        public void onClick(View v) {
+            ImageView imageView = (ImageView) v;
+            
+            switch (imageView.getId()) {
+            case R.id.galleryBarShowImagesIcon:
+                if (itemProvider.getHideImages()) { // are images hidden?
+                    // show images...
+                    itemProvider.setHideImages(false);
+                    
+                    // active background:
+                    setViewBackground(imageView, true);
+                }
+                else {
+                    itemProvider.setHideImages(true);
+                    setViewBackground(imageView, false);
+                }
+                break;
+            case R.id.galleryBarShowVideosIcon:
+                if (itemProvider.getHideVideos()) {
+                    itemProvider.setHideVideos(false);
+                    setViewBackground(imageView, true);
+                }
+                else {
+                    itemProvider.setHideVideos(true);
+                    setViewBackground(imageView, false);
+                }
+                break;
+            case R.id.galleryBarPreferencesIcon:
+                Intent settingsActivity = new Intent(getBaseContext(), 
+                        SettingsActivity.class);
+                startActivity(settingsActivity);
+                break;
+            }
+        }
+        
+    }
     
 }
 

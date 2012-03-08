@@ -75,20 +75,20 @@ public class ItemProvider extends Thread {
     private SortedMap<Integer, Item> itemCache;
     
     /**
-     * Filter items of type video from the position cache.
+     * Hide items of type video from the position cache.
      * 
      * Other items are kept in the itemCache but are excluded
      * from the positionCache.
      */
-    private boolean filterVideos = true;
+    private boolean hideVideos = true;
     
     /**
-     * Filter items of type image from the position cache.
+     * Hide items of type image from the position cache.
      * 
      * Other items are kept in the itemCache but are excluded
      * from the positionCache.
      */
-    private boolean filterImages = false;
+    private boolean hideImages = false;
     
     /**
      * The handler for this thread, used to queue the item downloading on.
@@ -300,8 +300,8 @@ public class ItemProvider extends Thread {
             // filtering by type
             Type type = item.getType();
             if ( (type == Type.AUDIO) ||
-                 (type == Type.VIDEO && filterVideos) ||    
-                 (type == Type.IMAGE && filterImages) ) {
+                 (type == Type.VIDEO && hideVideos) ||    
+                 (type == Type.IMAGE && hideImages) ) {
                 continue;
             }
 
@@ -337,8 +337,8 @@ public class ItemProvider extends Thread {
      * 
      * @param filterVideos
      */
-    public void setFilterVideos(boolean filterVideos) {
-        this.filterVideos = filterVideos;
+    public void setHideVideos(boolean hideVideos) {
+        this.hideVideos = hideVideos;
         
         // update position cache (based on the changed filtering)
         createPositionCache();
@@ -355,8 +355,8 @@ public class ItemProvider extends Thread {
      * 
      * @param filterImages
      */
-    public void setFilterImages(boolean filterImages) {
-        this.filterImages = filterImages;
+    public void setHideImages(boolean hideImages) {
+        this.hideImages = hideImages;
         
         // update position cache (based on the changed filtering)
         createPositionCache();
@@ -366,21 +366,21 @@ public class ItemProvider extends Thread {
     }
     
     /**
-     * Return filterVideos attribute.
+     * Return state of hideVideos.
      * 
-     * @return filterVideos boolean
+     * @return hideVideos boolean
      */
-    public boolean getFilterVideos() {
-        return filterVideos;
+    public boolean getHideVideos() {
+        return hideVideos;
     }
 
     /**
-     * Return filterImages attribute.
+     * Return state of hideImages.
      * 
-     * @return filterImages boolean
+     * @return hideImages boolean
      */
-    public boolean getFilterImages() {
-        return filterImages;
+    public boolean getHideImages() {
+        return hideImages;
     }
     
 }
