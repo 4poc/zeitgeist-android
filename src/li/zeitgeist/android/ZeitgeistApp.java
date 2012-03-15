@@ -23,15 +23,15 @@ import android.app.Application;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
-import li.zeitgeist.android.services.ItemService;
-import li.zeitgeist.android.services.ThumbnailProvider;
+import li.zeitgeist.android.worker.ItemWorker;
+import li.zeitgeist.android.worker.ThumbnailProvider;
 import li.zeitgeist.api.ZeitgeistApi;
 
 public class ZeitgeistApp extends Application {
 
     public static final String TAG = "Zeitgeist";
 
-    private ItemService itemProvider;
+    private ItemWorker itemProvider;
     private ThumbnailProvider thumbnailProvider;
 
     public ZeitgeistApp() {
@@ -50,7 +50,7 @@ public class ZeitgeistApp extends Application {
         //itemProvider.addUpdatedItemsListener(thumbnailProvider);
     }
 
-    public ItemService getItemProvider() {
+    public ItemWorker getItemProvider() {
         return itemProvider;
     }
 

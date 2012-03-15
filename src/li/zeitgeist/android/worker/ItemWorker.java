@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package li.zeitgeist.android.services;
+package li.zeitgeist.android.worker;
 
 import li.zeitgeist.android.ZeitgeistApiFactory;
 import li.zeitgeist.android.ZeitgeistApp;
@@ -28,6 +28,7 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.Handler;
@@ -46,12 +47,12 @@ import android.util.Log;
  * @author apoc
  * @see GalleryAdapter
  */
-public class ItemService extends Service {
+public class ItemWorker {
 
     /**
      * Standard android logging tag.
      */
-    public static final String TAG = ZeitgeistApp.TAG + ":ItemProvider";
+    public static final String TAG = ZeitgeistApp.TAG + ":ItemWorker";
 
     /**
      * Interface for updated item listeners.
@@ -113,18 +114,12 @@ public class ItemService extends Service {
 
     public ItemThread thread;
     
-    public class ItemServiceBinder extends Binder {
-        public ItemService getService() {
-            return ItemService.this;
-        }
-    }
-    
-    private final ItemServiceBinder binder = new ItemServiceBinder();
-    
-    @Override
-    public void onCreate() {
-        Log.d(TAG, "onCreate");
-        api = ZeitgeistApiFactory.createInstance(this);
+    private Context context;
+
+    public ItemWorker(Context context) {
+        this.context = context;
+        
+        api = ZeitgeistApiFactory.createInstance(context);
         
         // initialize caches, in-memory only atm.
         itemCache = new TreeMap<Integer, Item>();
@@ -134,30 +129,9 @@ public class ItemService extends Service {
         updatedListeners = new Vector<UpdatedItemsListener>();
 
         thread = new ItemThread();
-
-    }
-    
-    @Override
-    public IBinder onBind(Intent intent) {
-        return binder;
-    }
-    
-    @Override
-    public void onStart(Intent intent, int startid) {
-        Log.d(TAG, "onStart");
-        
         if (!thread.isAlive()) {
             thread.start();
         }
-        else { // look for new items
-            //queryFirstItems();
-        }
-    }
-
-    @Override
-    public void onDestroy() {
-        Log.d(TAG, "onDestroy");
-        stopThread();
     }
 
     /**
@@ -403,21 +377,22 @@ public class ItemService extends Service {
     }
     
     /**
-     * Return state of hideVideos.
-     * 
-     * @return hideVideos boolean
-     */
-    public boolean getHideVideos() {
-        return hideVideos;
-    }
-
-    /**
-     * Return state of hideImages.
+     * Returns true if images are hidden.
      * 
      * @return hideImages boolean
      */
-    public boolean getHideImages() {
+    public boolean isHiddenImages() {
         return hideImages;
+    }
+
+    
+    /**
+     * Returns true if videos are hidden.
+     * 
+     * @return hideVideos boolean
+     */
+    public boolean isHiddenVideos() {
+        return hideVideos;
     }
 
  

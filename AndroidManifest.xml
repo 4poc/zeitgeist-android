@@ -30,7 +30,7 @@
             android:label="@string/app_name" />
 
         <service
-            android:name=".services.ItemService"
+            android:name=".GalleryService"
             android:enabled="true" />
     </application>
 

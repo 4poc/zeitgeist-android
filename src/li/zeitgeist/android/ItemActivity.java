@@ -17,7 +17,7 @@
  */
 package li.zeitgeist.android;
 
-import li.zeitgeist.android.services.ItemService;
+import li.zeitgeist.android.worker.ItemWorker;
 // import li.zeitgeist.android.provider.ThumbnailProvider;
 import li.zeitgeist.api.Item;
 import android.app.Activity;
@@ -41,10 +41,17 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
 
     private static final String TAG = ZeitgeistApp.TAG + ":ItemActivity";
     
-    // private ThumbnailProvider thumbnailProvider;
-    private ItemService itemService;
+    private ItemWorker itemWorker;
     
-    private boolean isBoundItemService;
+    private GalleryService boundService;
+    
+    private boolean isBoundService;
+    
+    
+    // private ThumbnailProvider thumbnailProvider;
+    //private ItemWorker itemService;
+    
+    // private boolean isBoundItemService;
 
     private ZeitgeistApi api;
     
@@ -63,7 +70,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         super.onCreate(savedInstanceState);
         Log.v(TAG, "onCreate()");
         
-        doBindItemService();
+        doBindService();
         
         //itemService = ((ZeitgeistApp)getApplication()).getItemProvider();
         // thumbnailProvider = ((ZeitgeistApp)getApplication()).getThumbnailProvider();
@@ -111,21 +118,21 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
 
     }
     
-    private void doBindItemService() {
-        bindService(new Intent(this, ItemService.class), itemServiceConnection,
+    private void doBindService() {
+        bindService(new Intent(this, GalleryService.class), serviceConnection,
                 Context.BIND_AUTO_CREATE);
-        isBoundItemService = true;
+        isBoundService = true;
     }
 
     private void doUnbindItemService() {
-        if (isBoundItemService) {
+        if (isBoundService) {
             // Detach our existing connection.
-            unbindService(itemServiceConnection);
-            isBoundItemService = false;
+            unbindService(serviceConnection);
+            isBoundService = false;
         }
     }
 
-    private ServiceConnection itemServiceConnection = new ServiceConnection() {
+    private ServiceConnection serviceConnection = new ServiceConnection() {
 
         @Override
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -133,10 +140,11 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
             
             // get the service instance, either creates one or uses
             // an existing
-            itemService = ((ItemService.ItemServiceBinder)service).getService();
+            boundService = ((GalleryService.GalleryServiceBinder) service).getService();
             
-            // start the service (if not already running) calls onStart()
-            startService(new Intent(ItemActivity.this, ItemService.class));
+            // get the item worker instance
+            itemWorker = boundService.getItemWorker();
+            
             
             // Get the item object this activity is about:
             Bundle bundle = getIntent().getExtras();
@@ -144,15 +152,13 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
                 Log.e(TAG, "bundle from intent is null!");
                 return;
             }
-            item = itemService.getItemById(bundle.getInt("id"));
+            item = itemWorker.getItemById(bundle.getInt("id"));
             
             webView.loadUrl(api.getBaseUrl() + item.getImage().getImage());
         }
 
         @Override
-        public void onServiceDisconnected(ComponentName name) {
-            itemService = null; // should never happen
-        }
+        public void onServiceDisconnected(ComponentName name) {}
     };
     
     @Override

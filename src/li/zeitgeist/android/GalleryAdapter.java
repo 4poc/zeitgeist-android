@@ -19,8 +19,8 @@ package li.zeitgeist.android;
 
 import java.util.List;
 
-import li.zeitgeist.android.services.*;
-import li.zeitgeist.android.services.ItemService.UpdatedItemsListener;
+import li.zeitgeist.android.worker.*;
+import li.zeitgeist.android.worker.ItemWorker.UpdatedItemsListener;
 
 import li.zeitgeist.api.Item;
 import android.graphics.Bitmap;
@@ -34,11 +34,11 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
     private static final String TAG = ZeitgeistApp.TAG + ":GalleryAdapter";
     
     private GalleryActivity galleryActivity;
-    private ItemService itemProvider;
+    private ItemWorker itemProvider;
     private ThumbnailProvider thumbnailProvider;
     
     public GalleryAdapter(GalleryActivity galleryActivity,
-      ItemService itemProvider, 
+      ItemWorker itemProvider, 
       ThumbnailProvider thumbnailProvider) {
         super();
         this.galleryActivity = galleryActivity;

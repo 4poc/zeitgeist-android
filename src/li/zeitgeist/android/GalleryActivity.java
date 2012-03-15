@@ -44,13 +44,13 @@ import android.widget.*;
 import android.widget.AbsListView.OnScrollListener;
 import android.widget.AdapterView.OnItemClickListener;
 
-import li.zeitgeist.android.services.ItemService;
-import li.zeitgeist.android.services.ThumbnailProvider;
+import li.zeitgeist.android.worker.ItemWorker;
+import li.zeitgeist.android.worker.ThumbnailProvider;
 import li.zeitgeist.api.Item;
 import li.zeitgeist.api.Item.Type;
 
 public class GalleryActivity extends Activity 
-  implements OnScrollListener, OnItemClickListener, OnMenuItemClickListener {
+  implements OnItemClickListener, OnMenuItemClickListener {
 
     private static final String TAG = ZeitgeistApp.TAG + ":GalleryActivity";
 
@@ -72,9 +72,14 @@ public class GalleryActivity extends Activity
     private int numColumns;
     private int scrollThreshold = 5;
     
-    private ItemService itemService = null;
     
-    private boolean isBoundItemService;
+    private ItemWorker itemWorker;
+    
+    private GalleryService boundService;
+    
+    private boolean isBoundService;
+    
+    
     
     GalleryAdapter adapter;
     
@@ -90,7 +95,7 @@ public class GalleryActivity extends Activity
         super.onCreate(savedInstanceState);
         Log.v(TAG, "onCreate()");
         
-        doBindItemService();
+        doBindService();
         
 
         // get the global provider instances
@@ -141,7 +146,7 @@ public class GalleryActivity extends Activity
 
         progressDialog.dismiss();
         
-        doUnbindItemService();
+        doUnbindService();
     }
 
     @Override
@@ -160,22 +165,22 @@ public class GalleryActivity extends Activity
     
 
     
-    private void doBindItemService() {
-        bindService(new Intent(this, ItemService.class), itemServiceConnection,
+    private void doBindService() {
+        bindService(new Intent(this, GalleryService.class), serviceConnection,
                 Context.BIND_AUTO_CREATE);
-        isBoundItemService = true;
+        isBoundService = true;
     }
     
-    private void doUnbindItemService() {
-        if (isBoundItemService) {
+    private void doUnbindService() {
+        if (isBoundService) {
             // Detach our existing connection.
-            unbindService(itemServiceConnection);
-            isBoundItemService = false;
+            unbindService(serviceConnection);
+            isBoundService = false;
         }
     }
-
+ 
     
-    private ServiceConnection itemServiceConnection = new ServiceConnection() {
+    private ServiceConnection serviceConnection = new ServiceConnection() {
 
         @Override
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -183,30 +188,29 @@ public class GalleryActivity extends Activity
             
             // get the service instance, either creates one or uses
             // an existing
-            itemService = ((ItemService.ItemServiceBinder)service).getService();
+            boundService = ((GalleryService.GalleryServiceBinder) service).getService();
             
-            // start the service (if not already running) calls onStart()
-            startService(new Intent(GalleryActivity.this, ItemService.class));
-            
-            // check for new items
-            itemService.queryFirstItems();
-            
-            adapter = new GalleryAdapter(GalleryActivity.this, itemService, thumbnailProvider);
+            // get the item worker instance
+            itemWorker = boundService.getItemWorker();
 
+            // check for new items
+            itemWorker.queryFirstItems();
+            
+            // create a new listview adapter
+            adapter = new GalleryAdapter(GalleryActivity.this, itemWorker, thumbnailProvider);
             gridView.setAdapter(adapter);
             
-            // change the background based on the settings of itemProvider
+            // change the icon selection based on current filter settings
             galleryBarOnClickListener.updateShowItems();
 
-            if (itemService.getItemCount() > 0) {
+            // no need to wait for the callback if theres something to see
+            if (itemWorker.getItemCount() > 0) {
                 hideProgressDialog();
             }
         }
 
         @Override
-        public void onServiceDisconnected(ComponentName name) {
-            itemService = null; // should never happen
-        }
+        public void onServiceDisconnected(ComponentName name) {}
     };
     
 
@@ -271,28 +275,6 @@ public class GalleryActivity extends Activity
     alertDialog.show();
     }
 
-    
-    private int lastVisibleItemCount = 0;
-
-	@Override
-	public void onScroll(AbsListView view, int firstVisibleItem,
-			int visibleItemCount, int totalItemCount) {
-		if (itemService.isLoading()) {
-		    Log.d(TAG, "itemProvider is loading");
-		    return;
-		}
-
-        if (totalItemCount - (firstVisibleItem + visibleItemCount) < scrollThreshold &&
-                lastVisibleItemCount != visibleItemCount) {
-            Log.d(TAG, "you've reached the end, loading new items");
-            itemService.queryOlderItems();
-            lastVisibleItemCount = visibleItemCount;
-        }
-	}
-
-	@Override
-	public void onScrollStateChanged(AbsListView view, int scrollState) {}
-	
 	public View createItemView() {
         Log.d(TAG, "create new item view");
 
@@ -354,7 +336,7 @@ public class GalleryActivity extends Activity
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        Item item = itemService.getItemByPosition(position);
+        Item item = itemWorker.getItemByPosition(position);
         
         if (item == null) return;
         
@@ -381,7 +363,7 @@ public class GalleryActivity extends Activity
         
         case R.id.galleryMenuRefreshItem:
             Toast.makeText(this, "Fetching new items...", Toast.LENGTH_SHORT).show();
-            itemService.queryNewerItems();
+            itemWorker.queryNewerItems();
             break;
 
         }
@@ -412,7 +394,7 @@ public class GalleryActivity extends Activity
         
         public void updateShowItems() {
             View showImagesView = findViewById(R.id.galleryBarShowImagesIcon);
-            if (itemService.getHideImages()) {
+            if (itemWorker.isHiddenImages()) {
                 setViewBackground(showImagesView, false);
             }
             else {
@@ -420,7 +402,7 @@ public class GalleryActivity extends Activity
             }
 
             View showVideosView = findViewById(R.id.galleryBarShowVideosIcon);
-            if (itemService.getHideVideos()) {
+            if (itemWorker.isHiddenVideos()) {
                 setViewBackground(showVideosView, false);
             }
             else {
@@ -443,25 +425,25 @@ public class GalleryActivity extends Activity
             
             switch (imageView.getId()) {
             case R.id.galleryBarShowImagesIcon:
-                if (itemService.getHideImages()) { // are images hidden?
+                if (itemWorker.isHiddenImages()) { // are images hidden?
                     // show images...
-                    itemService.setHideImages(false);
+                    itemWorker.setHideImages(false);
                     
                     // active background:
                     setViewBackground(imageView, true);
                 }
                 else {
-                    itemService.setHideImages(true);
+                    itemWorker.setHideImages(true);
                     setViewBackground(imageView, false);
                 }
                 break;
             case R.id.galleryBarShowVideosIcon:
-                if (itemService.getHideVideos()) {
-                    itemService.setHideVideos(false);
+                if (itemWorker.isHiddenVideos()) {
+                    itemWorker.setHideVideos(false);
                     setViewBackground(imageView, true);
                 }
                 else {
-                    itemService.setHideVideos(true);
+                    itemWorker.setHideVideos(true);
                     setViewBackground(imageView, false);
                 }
                 break;
