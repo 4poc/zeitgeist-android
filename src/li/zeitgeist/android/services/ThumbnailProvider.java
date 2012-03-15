@@ -15,10 +15,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package li.zeitgeist.android.provider;
+package li.zeitgeist.android.services;
 
 import li.zeitgeist.android.ZeitgeistApp;
-import li.zeitgeist.android.provider.ItemProvider.UpdatedItemsListener;
+import li.zeitgeist.android.services.ItemService.UpdatedItemsListener;
 
 import li.zeitgeist.android.R;
 

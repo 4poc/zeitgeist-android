@@ -21,17 +21,20 @@ import android.app.AlertDialog;
 
 import android.content.DialogInterface;
 
-import android.text.ClipboardManager;
 import android.util.*;
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Binder;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.preference.PreferenceManager;
 
 import android.view.*;
@@ -41,19 +44,17 @@ import android.widget.*;
 import android.widget.AbsListView.OnScrollListener;
 import android.widget.AdapterView.OnItemClickListener;
 
-import li.zeitgeist.android.provider.ItemProvider;
-import li.zeitgeist.android.provider.ThumbnailProvider;
+import li.zeitgeist.android.services.ItemService;
+import li.zeitgeist.android.services.ThumbnailProvider;
 import li.zeitgeist.api.Item;
 import li.zeitgeist.api.Item.Type;
 
 public class GalleryActivity extends Activity 
   implements OnScrollListener, OnItemClickListener, OnMenuItemClickListener {
 
-
     private static final String TAG = ZeitgeistApp.TAG + ":GalleryActivity";
 
     private ThumbnailProvider thumbnailProvider;
-    private ItemProvider itemProvider;
     
     private ProgressDialog progressDialog = null;
     
@@ -70,22 +71,34 @@ public class GalleryActivity extends Activity
     private int thumbWidth;
     private int numColumns;
     private int scrollThreshold = 5;
-
+    
+    private ItemService itemService = null;
+    
+    private boolean isBoundItemService;
+    
     GalleryAdapter adapter;
+    
+    GalleryBarOnClickListener galleryBarOnClickListener;
 
     public GalleryActivity() {
         super();
         Log.v(TAG, "constructed");
     }
     
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.v(TAG, "onCreate()");
+        
+        doBindItemService();
+        
 
         // get the global provider instances
-        itemProvider = ((ZeitgeistApp)getApplication()).getItemProvider();
+        
+
+        //this.startService(new Intent(this, ItemService.class));
+        
+        //itemProvider = ((ZeitgeistApp)getApplication()).getItemProvider();
         thumbnailProvider = ((ZeitgeistApp)getApplication()).getThumbnailProvider();
 
         // Disable the title bar
@@ -96,47 +109,107 @@ public class GalleryActivity extends Activity
         
         // set the screen width (800 or 480 on desire z)
         Display display = getWindowManager().getDefaultDisplay();
-        screenWidth = display.getWidth() - 4; /* FIXME: where the 2 spacing coming from? */
-
-        // create adapter
-        adapter = new GalleryAdapter(this, itemProvider, thumbnailProvider);
-
-        // get the gallery gridview
+        screenWidth = display.getWidth() - 4;
+        
+        // set the gridview dimensions
         gridView = (GridView) findViewById(R.id.thumbnailGrid);
         gridView.setHorizontalSpacing(THUMB_SPACING);
         gridView.setVerticalSpacing(THUMB_SPACING);
-        gridView.setAdapter(adapter);
-        // gridView.setOnScrollListener(this);
         gridView.setOnItemClickListener(this);
         
         // calculates and sets the thumbnail item size (thumbWidth)
         updateThumbnailSize();
+                
+        // gallery bar (icon header bar) assigns onclick listener
+        galleryBarOnClickListener = new GalleryBarOnClickListener();
+        ((ImageView) findViewById(R.id.galleryBarShowImagesIcon))
+            .setOnClickListener(galleryBarOnClickListener);
+        ((ImageView) findViewById(R.id.galleryBarShowVideosIcon))
+            .setOnClickListener(galleryBarOnClickListener);
+        ((ImageView) findViewById(R.id.galleryBarPreferencesIcon))
+            .setOnClickListener(galleryBarOnClickListener);
         
         // show progress dialog per default
         progressDialog = ProgressDialog.show(this, null, "Loading...", true);
-        if (itemProvider.getItemCount() > 0) {
-        	progressDialog.hide();
-        }
+    }
+    
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.v(TAG, "onDestroy()");
+
+        progressDialog.dismiss();
         
-        // gallery bar (icon header bar) assigns onclick listener
-        GalleryBarOnClickListener listener = new GalleryBarOnClickListener();
-        ((ImageView) findViewById(R.id.galleryBarShowImagesIcon))
-            .setOnClickListener(listener);
-        ((ImageView) findViewById(R.id.galleryBarShowVideosIcon))
-            .setOnClickListener(listener);
-        ((ImageView) findViewById(R.id.galleryBarPreferencesIcon))
-            .setOnClickListener(listener);
+        doUnbindItemService();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        Log.v(TAG, "onPause()");
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        Log.v(TAG, "onResume()");
         
-        // change the background based on the settings of itemProvider
-        listener.updateShowItems();
-        
-        if (!itemProvider.isAlive()) {
-            itemProvider.start();
-        }
-        else {
-            itemProvider.queryFirstItems();
+        updateThumbnailSize();
+    }
+    
+
+    
+    private void doBindItemService() {
+        bindService(new Intent(this, ItemService.class), itemServiceConnection,
+                Context.BIND_AUTO_CREATE);
+        isBoundItemService = true;
+    }
+    
+    private void doUnbindItemService() {
+        if (isBoundItemService) {
+            // Detach our existing connection.
+            unbindService(itemServiceConnection);
+            isBoundItemService = false;
         }
     }
+
+    
+    private ServiceConnection itemServiceConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            Log.v(TAG, "onServiceConnected");
+            
+            // get the service instance, either creates one or uses
+            // an existing
+            itemService = ((ItemService.ItemServiceBinder)service).getService();
+            
+            // start the service (if not already running) calls onStart()
+            startService(new Intent(GalleryActivity.this, ItemService.class));
+            
+            // check for new items
+            itemService.queryFirstItems();
+            
+            adapter = new GalleryAdapter(GalleryActivity.this, itemService, thumbnailProvider);
+
+            gridView.setAdapter(adapter);
+            
+            // change the background based on the settings of itemProvider
+            galleryBarOnClickListener.updateShowItems();
+
+            if (itemService.getItemCount() > 0) {
+                hideProgressDialog();
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            itemService = null; // should never happen
+        }
+    };
+    
+
     
     public void updateThumbnailSize() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
@@ -197,35 +270,14 @@ public class GalleryActivity extends Activity
     } });   
     alertDialog.show();
     }
-    
-	@Override
-    public void onDestroy() {
-        super.onDestroy();
-        Log.v(TAG, "onDestroy()");
 
-        progressDialog.dismiss();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        Log.v(TAG, "onPause()");
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        Log.v(TAG, "onResume()");
-        
-        updateThumbnailSize();
-    }
     
     private int lastVisibleItemCount = 0;
 
 	@Override
 	public void onScroll(AbsListView view, int firstVisibleItem,
 			int visibleItemCount, int totalItemCount) {
-		if (itemProvider.isLoading()) {
+		if (itemService.isLoading()) {
 		    Log.d(TAG, "itemProvider is loading");
 		    return;
 		}
@@ -233,7 +285,7 @@ public class GalleryActivity extends Activity
         if (totalItemCount - (firstVisibleItem + visibleItemCount) < scrollThreshold &&
                 lastVisibleItemCount != visibleItemCount) {
             Log.d(TAG, "you've reached the end, loading new items");
-            itemProvider.queryOlderItems();
+            itemService.queryOlderItems();
             lastVisibleItemCount = visibleItemCount;
         }
 	}
@@ -302,7 +354,7 @@ public class GalleryActivity extends Activity
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        Item item = itemProvider.getItemByPosition(position);
+        Item item = itemService.getItemByPosition(position);
         
         if (item == null) return;
         
@@ -317,9 +369,6 @@ public class GalleryActivity extends Activity
             showItemActivityIntent.putExtras(itemIdBundle);
             startActivity(showItemActivityIntent);
         }
-        
-
-
     }
 
     @Override
@@ -332,7 +381,7 @@ public class GalleryActivity extends Activity
         
         case R.id.galleryMenuRefreshItem:
             Toast.makeText(this, "Fetching new items...", Toast.LENGTH_SHORT).show();
-            itemProvider.queryNewerItems();
+            itemService.queryNewerItems();
             break;
 
         }
@@ -363,7 +412,7 @@ public class GalleryActivity extends Activity
         
         public void updateShowItems() {
             View showImagesView = findViewById(R.id.galleryBarShowImagesIcon);
-            if (itemProvider.getHideImages()) {
+            if (itemService.getHideImages()) {
                 setViewBackground(showImagesView, false);
             }
             else {
@@ -371,7 +420,7 @@ public class GalleryActivity extends Activity
             }
 
             View showVideosView = findViewById(R.id.galleryBarShowVideosIcon);
-            if (itemProvider.getHideVideos()) {
+            if (itemService.getHideVideos()) {
                 setViewBackground(showVideosView, false);
             }
             else {
@@ -394,25 +443,25 @@ public class GalleryActivity extends Activity
             
             switch (imageView.getId()) {
             case R.id.galleryBarShowImagesIcon:
-                if (itemProvider.getHideImages()) { // are images hidden?
+                if (itemService.getHideImages()) { // are images hidden?
                     // show images...
-                    itemProvider.setHideImages(false);
+                    itemService.setHideImages(false);
                     
                     // active background:
                     setViewBackground(imageView, true);
                 }
                 else {
-                    itemProvider.setHideImages(true);
+                    itemService.setHideImages(true);
                     setViewBackground(imageView, false);
                 }
                 break;
             case R.id.galleryBarShowVideosIcon:
-                if (itemProvider.getHideVideos()) {
-                    itemProvider.setHideVideos(false);
+                if (itemService.getHideVideos()) {
+                    itemService.setHideVideos(false);
                     setViewBackground(imageView, true);
                 }
                 else {
-                    itemProvider.setHideVideos(true);
+                    itemService.setHideVideos(true);
                     setViewBackground(imageView, false);
                 }
                 break;

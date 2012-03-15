@@ -15,8 +15,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package li.zeitgeist.android.provider;
+package li.zeitgeist.android.services;
 
+import li.zeitgeist.android.ZeitgeistApiFactory;
 import li.zeitgeist.android.ZeitgeistApp;
 
 import li.zeitgeist.api.*;
@@ -26,7 +27,11 @@ import li.zeitgeist.api.error.ZeitgeistError;
 import java.util.*;
 import java.util.Map.Entry;
 
+import android.app.Service;
+import android.content.Intent;
+import android.os.Binder;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
 
 import android.util.Log;
@@ -41,7 +46,7 @@ import android.util.Log;
  * @author apoc
  * @see GalleryAdapter
  */
-public class ItemProvider extends Thread {
+public class ItemService extends Service {
 
     /**
      * Standard android logging tag.
@@ -106,20 +111,53 @@ public class ItemProvider extends Thread {
      */
     private ZeitgeistApi api;
 
-    /**
-     * Constructs but doesnt start a new Item Provider.
-     * 
-     * @param api the Zeitgeist API instance to use.
-     */
-    public ItemProvider(ZeitgeistApi api) {
-        this.api = api;
-       
+    public ItemThread thread;
+    
+    public class ItemServiceBinder extends Binder {
+        public ItemService getService() {
+            return ItemService.this;
+        }
+    }
+    
+    private final ItemServiceBinder binder = new ItemServiceBinder();
+    
+    @Override
+    public void onCreate() {
+        Log.d(TAG, "onCreate");
+        api = ZeitgeistApiFactory.createInstance(this);
+        
         // initialize caches, in-memory only atm.
         itemCache = new TreeMap<Integer, Item>();
         positionCache = new Vector<Integer>();
 
         // list of objects that implement the listener interface
         updatedListeners = new Vector<UpdatedItemsListener>();
+
+        thread = new ItemThread();
+
+    }
+    
+    @Override
+    public IBinder onBind(Intent intent) {
+        return binder;
+    }
+    
+    @Override
+    public void onStart(Intent intent, int startid) {
+        Log.d(TAG, "onStart");
+        
+        if (!thread.isAlive()) {
+            thread.start();
+        }
+        else { // look for new items
+            //queryFirstItems();
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.d(TAG, "onDestroy");
+        stopThread();
     }
 
     /**
@@ -201,6 +239,10 @@ public class ItemProvider extends Thread {
      * @param before exclusive, search before the Id (or -1 to ignore)
      */
     private void queryItems(final int after, final int before) {
+        if (!thread.isAlive() || handler == null) {
+            return;
+        }
+        
     	loading = true; // true until the items are downloaded and processed
         handler.post(new Runnable() {
             public void run() {
@@ -254,7 +296,7 @@ public class ItemProvider extends Thread {
      */
     public synchronized void stopThread() {
     	loading = false;
-        if (this.isAlive()) {
+        if (thread.isAlive()) {
             handler.post(new Runnable() {
                 public void run() {
                     Log.i(TAG, "stopping thread");
@@ -273,20 +315,7 @@ public class ItemProvider extends Thread {
     	return loading;
     }
 
-    @Override
-    public void run() {
-        try {
-            Looper.prepare();
 
-            handler = new Handler();
-            queryFirstItems();
-
-            Looper.loop(); // gogogo!
-        }
-        catch (Throwable t) {
-            Log.e(TAG, "ListThread halted because of error: ", t);
-        }
-    }
     
 
     /**
@@ -390,7 +419,25 @@ public class ItemProvider extends Thread {
     public boolean getHideImages() {
         return hideImages;
     }
-    
+
+ 
+    public class ItemThread extends Thread {
+        @Override
+        public void run() {
+            try {
+                Looper.prepare();
+
+                handler = new Handler();
+                queryFirstItems();
+
+                Looper.loop(); // gogogo!
+            }
+            catch (Throwable t) {
+                Log.e(TAG, "ListThread halted because of error: ", t);
+            }
+        }
+    }
+
 }
 
 

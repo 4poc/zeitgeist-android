@@ -17,12 +17,17 @@
  */
 package li.zeitgeist.android;
 
-import li.zeitgeist.android.provider.ItemProvider;
+import li.zeitgeist.android.services.ItemService;
 // import li.zeitgeist.android.provider.ThumbnailProvider;
 import li.zeitgeist.api.Item;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.text.ClipboardManager;
 import android.util.Log;
 import android.view.*;
@@ -37,11 +42,15 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
     private static final String TAG = ZeitgeistApp.TAG + ":ItemActivity";
     
     // private ThumbnailProvider thumbnailProvider;
-    private ItemProvider itemProvider;
+    private ItemService itemService;
+    
+    private boolean isBoundItemService;
 
     private ZeitgeistApi api;
     
     private Item item;
+    
+    private WebView webView;
     
     public ItemActivity() {
         super();
@@ -54,7 +63,9 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         super.onCreate(savedInstanceState);
         Log.v(TAG, "onCreate()");
         
-        itemProvider = ((ZeitgeistApp)getApplication()).getItemProvider();
+        doBindItemService();
+        
+        //itemService = ((ZeitgeistApp)getApplication()).getItemProvider();
         // thumbnailProvider = ((ZeitgeistApp)getApplication()).getThumbnailProvider();
         api = ((ZeitgeistApp)getApplication()).getApi();
 
@@ -64,17 +75,10 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         // Set main layout
         setContentView(R.layout.item);
         
-        // Get the item object this activity is about:
-        Bundle bundle = getIntent().getExtras();
-        if (bundle == null) {
-            Log.e(TAG, "bundle from intent is null!");
-            return;
-        }
-        item = itemProvider.getItemById(bundle.getInt("id"));
-        
+
         
         // Find and setup the WebView to show the item
-        WebView webView = (WebView) findViewById(R.id.webView);
+        webView = (WebView) findViewById(R.id.webView);
         webView.setBackgroundColor(R.color.item_webview_background);
 
         WebSettings settings = webView.getSettings();
@@ -104,10 +108,52 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
             .show();
           }
         });
-        
-        webView.loadUrl(api.getBaseUrl() + item.getImage().getImage());
-        
+
     }
+    
+    private void doBindItemService() {
+        bindService(new Intent(this, ItemService.class), itemServiceConnection,
+                Context.BIND_AUTO_CREATE);
+        isBoundItemService = true;
+    }
+
+    private void doUnbindItemService() {
+        if (isBoundItemService) {
+            // Detach our existing connection.
+            unbindService(itemServiceConnection);
+            isBoundItemService = false;
+        }
+    }
+
+    private ServiceConnection itemServiceConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            Log.v(TAG, "onServiceConnected");
+            
+            // get the service instance, either creates one or uses
+            // an existing
+            itemService = ((ItemService.ItemServiceBinder)service).getService();
+            
+            // start the service (if not already running) calls onStart()
+            startService(new Intent(ItemActivity.this, ItemService.class));
+            
+            // Get the item object this activity is about:
+            Bundle bundle = getIntent().getExtras();
+            if (bundle == null) {
+                Log.e(TAG, "bundle from intent is null!");
+                return;
+            }
+            item = itemService.getItemById(bundle.getInt("id"));
+            
+            webView.loadUrl(api.getBaseUrl() + item.getImage().getImage());
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            itemService = null; // should never happen
+        }
+    };
     
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -124,6 +170,8 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
     public void onDestroy() {
         super.onDestroy();
         Log.v(TAG, "onDestroy()");
+        
+        doUnbindItemService();
     }
 
     @Override
