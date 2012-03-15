@@ -35,8 +35,6 @@ import android.view.MenuItem.OnMenuItemClickListener;
 import android.widget.*;
 import android.webkit.*;
 
-import li.zeitgeist.api.ZeitgeistApi;
-
 public class ItemActivity extends Activity implements OnMenuItemClickListener {
 
     private static final String TAG = ZeitgeistApp.TAG + ":ItemActivity";
@@ -46,14 +44,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
     private GalleryService boundService;
     
     private boolean isBoundService;
-    
-    
-    // private ThumbnailProvider thumbnailProvider;
-    //private ItemWorker itemService;
-    
-    // private boolean isBoundItemService;
 
-    private ZeitgeistApi api;
     
     private Item item;
     
@@ -71,10 +62,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         Log.v(TAG, "onCreate()");
         
         doBindService();
-        
-        //itemService = ((ZeitgeistApp)getApplication()).getItemProvider();
-        // thumbnailProvider = ((ZeitgeistApp)getApplication()).getThumbnailProvider();
-        api = ((ZeitgeistApp)getApplication()).getApi();
+
 
         // Disable the title bar
         requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -154,7 +142,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
             }
             item = itemWorker.getItemById(bundle.getInt("id"));
             
-            webView.loadUrl(api.getBaseUrl() + item.getImage().getImage());
+            webView.loadUrl(item.getImage().getImageUrl());
         }
 
         @Override
@@ -201,7 +189,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
             
         case R.id.itemMenuCopyUrlItem:
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            clipboard.setText(api.getBaseUrl() + item.getImage().getImage());
+            clipboard.setText(item.getImage().getImageUrl());
             Toast.makeText(this, "URL Copied", Toast.LENGTH_SHORT).show();
             break;
         }

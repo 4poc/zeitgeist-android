@@ -17,6 +17,7 @@
  */
 package li.zeitgeist.android.worker;
 
+import li.zeitgeist.android.ZeitgeistApiFactory;
 import li.zeitgeist.android.ZeitgeistApp;
 import li.zeitgeist.android.worker.ItemWorker.UpdatedItemsListener;
 
@@ -47,7 +48,7 @@ import li.zeitgeist.api.ZeitgeistApi;
  * the bitmaps: A LruCache with a fixed size and a disk cache on 
  * the sdcard.
  */
-public class ThumbnailProvider implements UpdatedItemsListener {
+public class ThumbnailWorker implements UpdatedItemsListener {
 
     /**
      * Standard android logging tag.
@@ -85,12 +86,14 @@ public class ThumbnailProvider implements UpdatedItemsListener {
      * This starts the thread pool, initializes the memory cache,
      * and creates the directories for the disk-cache (if necessary).
      */
-    public ThumbnailProvider(Context context, ZeitgeistApi api) {
+    public ThumbnailWorker(Context context) {
         Log.v(TAG, "constructed");
+        
+        api = ZeitgeistApiFactory.createInstance(context);
+        
         // start thread pool
         pool = Executors.newFixedThreadPool(THREADS);
 
-        this.api = api;
         
         // initialize memory cache
         /*
@@ -297,6 +300,10 @@ public class ThumbnailProvider implements UpdatedItemsListener {
 	}
 
     public void onError(String error) {
+    }
+
+    public void stopThreadPool() {
+        pool.shutdownNow();
     }
 
 

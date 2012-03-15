@@ -35,11 +35,11 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
     
     private GalleryActivity galleryActivity;
     private ItemWorker itemProvider;
-    private ThumbnailProvider thumbnailProvider;
+    private ThumbnailWorker thumbnailProvider;
     
     public GalleryAdapter(GalleryActivity galleryActivity,
       ItemWorker itemProvider, 
-      ThumbnailProvider thumbnailProvider) {
+      ThumbnailWorker thumbnailProvider) {
         super();
         this.galleryActivity = galleryActivity;
         this.itemProvider = itemProvider;
@@ -122,7 +122,7 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
             // within the UI thread, other loadThumbnail()'s override the callback
             Log.v(TAG, "loadThumbnail() for id: " + String.valueOf(item.getId()));
             thumbnailProvider.loadThumbnail(item, 
-                    new ThumbnailProvider.LoadedThumbnailListener() {
+                    new ThumbnailWorker.LoadedThumbnailListener() {
                 @Override
                 public void onLoadedThumbnail(final int id, final Bitmap bitmap) {
 

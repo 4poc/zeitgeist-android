@@ -1,10 +1,10 @@
 package li.zeitgeist.android;
 
-import li.zeitgeist.android.worker.ItemWorker;
+import li.zeitgeist.android.worker.*;
+
 import android.app.Service;
 import android.content.Intent;
-import android.os.Binder;
-import android.os.IBinder;
+import android.os.*;
 import android.util.Log;
 
 /**
@@ -41,12 +41,17 @@ public class GalleryService extends Service {
     private ItemWorker itemWorker;
     
     
+    private ThumbnailWorker thumbnailWorker;
+    
+    
     
     @Override
     public void onCreate() {
         Log.d(TAG, "onCreate");
         
         itemWorker = new ItemWorker(this);
+        
+        thumbnailWorker = new ThumbnailWorker(this);
     }
     
     
@@ -62,11 +67,17 @@ public class GalleryService extends Service {
         Log.d(TAG, "onDestroy");
         
         itemWorker.stopThread();
+        
+        thumbnailWorker.stopThreadPool();
 
     }
     
     public ItemWorker getItemWorker() {
         return itemWorker;
+    }
+    
+    public ThumbnailWorker getThumbnailWorker() {
+        return thumbnailWorker;
     }
     
 }

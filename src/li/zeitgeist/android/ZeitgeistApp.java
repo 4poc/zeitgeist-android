@@ -19,20 +19,11 @@
 package li.zeitgeist.android;
 
 import android.app.Application;
-
-import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
-
-import li.zeitgeist.android.worker.ItemWorker;
-import li.zeitgeist.android.worker.ThumbnailProvider;
-import li.zeitgeist.api.ZeitgeistApi;
 
 public class ZeitgeistApp extends Application {
 
     public static final String TAG = "Zeitgeist";
-
-    private ItemWorker itemProvider;
-    private ThumbnailProvider thumbnailProvider;
 
     public ZeitgeistApp() {
         super();
@@ -40,36 +31,9 @@ public class ZeitgeistApp extends Application {
 
     public void onCreate() {
         super.onCreate();
-        
+
+        // Related: http://stackoverflow.com/questions/6905272/where-should-you-call-preferencemanager-setdefaultvalues
         PreferenceManager.setDefaultValues(this, R.xml.preference, false);
-        
-        //itemProvider = new ItemService(getApi());
-        thumbnailProvider = new ThumbnailProvider(this, getApi());
-        
-        // load the thumbnails of new items
-        //itemProvider.addUpdatedItemsListener(thumbnailProvider);
-    }
-
-    public ItemWorker getItemProvider() {
-        return itemProvider;
-    }
-
-    public ThumbnailProvider getThumbnailProvider() {
-        return thumbnailProvider;
-    }
-
-    public ZeitgeistApi getApi() {
-        SharedPreferences prefs = 
-            PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-        String baseUrl = prefs.getString("baseUrl", "http://zeitgeist.li");
-        String eMail = prefs.getString("eMail", ""); 
-        String apiSecret =  prefs.getString("apiSecret", ""); 
-
-        if (baseUrl.endsWith("/")) {
-            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
-        }
-
-        return new ZeitgeistApi(baseUrl, eMail, apiSecret);
     }
     
 }

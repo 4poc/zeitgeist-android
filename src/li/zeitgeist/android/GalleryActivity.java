@@ -32,7 +32,6 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
-import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
@@ -41,11 +40,10 @@ import android.view.*;
 import android.view.MenuItem.OnMenuItemClickListener;
 import android.view.View.OnClickListener;
 import android.widget.*;
-import android.widget.AbsListView.OnScrollListener;
 import android.widget.AdapterView.OnItemClickListener;
 
 import li.zeitgeist.android.worker.ItemWorker;
-import li.zeitgeist.android.worker.ThumbnailProvider;
+import li.zeitgeist.android.worker.ThumbnailWorker;
 import li.zeitgeist.api.Item;
 import li.zeitgeist.api.Item.Type;
 
@@ -54,7 +52,7 @@ public class GalleryActivity extends Activity
 
     private static final String TAG = ZeitgeistApp.TAG + ":GalleryActivity";
 
-    private ThumbnailProvider thumbnailProvider;
+
     
     private ProgressDialog progressDialog = null;
     
@@ -74,6 +72,7 @@ public class GalleryActivity extends Activity
     
     
     private ItemWorker itemWorker;
+    private ThumbnailWorker thumbnailWorker;
     
     private GalleryService boundService;
     
@@ -104,7 +103,7 @@ public class GalleryActivity extends Activity
         //this.startService(new Intent(this, ItemService.class));
         
         //itemProvider = ((ZeitgeistApp)getApplication()).getItemProvider();
-        thumbnailProvider = ((ZeitgeistApp)getApplication()).getThumbnailProvider();
+        //thumbnailWorker = ((ZeitgeistApp)getApplication()).getThumbnailProvider();
 
         // Disable the title bar
         requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -190,14 +189,15 @@ public class GalleryActivity extends Activity
             // an existing
             boundService = ((GalleryService.GalleryServiceBinder) service).getService();
             
-            // get the item worker instance
+            // get worker instances:
             itemWorker = boundService.getItemWorker();
+            thumbnailWorker = boundService.getThumbnailWorker();
 
             // check for new items
             itemWorker.queryFirstItems();
             
             // create a new listview adapter
-            adapter = new GalleryAdapter(GalleryActivity.this, itemWorker, thumbnailProvider);
+            adapter = new GalleryAdapter(GalleryActivity.this, itemWorker, thumbnailWorker);
             gridView.setAdapter(adapter);
             
             // change the icon selection based on current filter settings

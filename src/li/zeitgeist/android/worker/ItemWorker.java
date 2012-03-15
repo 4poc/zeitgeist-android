@@ -27,12 +27,8 @@ import li.zeitgeist.api.error.ZeitgeistError;
 import java.util.*;
 import java.util.Map.Entry;
 
-import android.app.Service;
 import android.content.Context;
-import android.content.Intent;
-import android.os.Binder;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Looper;
 
 import android.util.Log;
@@ -114,11 +110,8 @@ public class ItemWorker {
 
     public ItemThread thread;
     
-    private Context context;
 
     public ItemWorker(Context context) {
-        this.context = context;
-        
         api = ZeitgeistApiFactory.createInstance(context);
         
         // initialize caches, in-memory only atm.
