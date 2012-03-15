@@ -80,6 +80,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         settings.setBuiltInZoomControls(true);
         settings.setSupportZoom(true);
         settings.setDefaultZoom(WebSettings.ZoomDensity.FAR);
+        settings.setUseWideViewPort(true);
         
         final ProgressBar progressBar = new ProgressBar(this);
         progressBar.setMax(100);
