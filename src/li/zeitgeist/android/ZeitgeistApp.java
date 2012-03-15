@@ -23,6 +23,9 @@ import android.preference.PreferenceManager;
 
 public class ZeitgeistApp extends Application {
 
+    /**
+     * Standard android logging tag.
+     */
     public static final String TAG = "Zeitgeist";
 
     public ZeitgeistApp() {

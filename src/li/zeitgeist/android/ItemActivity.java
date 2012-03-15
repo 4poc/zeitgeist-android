@@ -37,6 +37,9 @@ import android.webkit.*;
 
 public class ItemActivity extends Activity implements OnMenuItemClickListener {
 
+    /**
+     * Standard android logging tag.
+     */
     private static final String TAG = ZeitgeistApp.TAG + ":ItemActivity";
     
     private ItemWorker itemWorker;

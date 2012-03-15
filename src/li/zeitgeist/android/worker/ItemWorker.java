@@ -43,7 +43,7 @@ import android.util.Log;
  * @author apoc
  * @see GalleryAdapter
  */
-public class ItemWorker {
+public class ItemWorker extends Thread {
 
     /**
      * Standard android logging tag.
@@ -108,9 +108,10 @@ public class ItemWorker {
      */
     private ZeitgeistApi api;
 
-    public ItemThread thread;
-    
-
+    /**
+     * Constructs and starts worker for downloading and create item instances.
+     * @param context of the gallery service.
+     */
     public ItemWorker(Context context) {
         api = ZeitgeistApiFactory.createInstance(context);
         
@@ -121,9 +122,9 @@ public class ItemWorker {
         // list of objects that implement the listener interface
         updatedListeners = new Vector<UpdatedItemsListener>();
 
-        thread = new ItemThread();
-        if (!thread.isAlive()) {
-            thread.start();
+        // start itself
+        if (!isAlive()) {
+            start();
         }
     }
 
@@ -150,6 +151,7 @@ public class ItemWorker {
     
     /**
      * Return item from cache by Id.
+     * 
      * @param id
      * @return item
      */
@@ -166,6 +168,9 @@ public class ItemWorker {
         return positionCache.size();
     }
 
+    /**
+     * Query for items on the frontpage (newest items).
+     */
     public void queryFirstItems() {
         queryItems(-1, -1);
     }
@@ -206,7 +211,7 @@ public class ItemWorker {
      * @param before exclusive, search before the Id (or -1 to ignore)
      */
     private void queryItems(final int after, final int before) {
-        if (!thread.isAlive() || handler == null) {
+        if (!isAlive() || handler == null) {
             return;
         }
         
@@ -263,7 +268,7 @@ public class ItemWorker {
      */
     public synchronized void stopThread() {
     	loading = false;
-        if (thread.isAlive()) {
+        if (isAlive()) {
             handler.post(new Runnable() {
                 public void run() {
                     Log.i(TAG, "stopping thread");
@@ -281,9 +286,6 @@ public class ItemWorker {
     public boolean isLoading() {
     	return loading;
     }
-
-
-    
 
     /**
      * Create sorted position cache with item IDs.
@@ -377,7 +379,6 @@ public class ItemWorker {
     public boolean isHiddenImages() {
         return hideImages;
     }
-
     
     /**
      * Returns true if videos are hidden.
@@ -388,24 +389,20 @@ public class ItemWorker {
         return hideVideos;
     }
 
- 
-    public class ItemThread extends Thread {
-        @Override
-        public void run() {
-            try {
-                Looper.prepare();
+    @Override
+    public void run() {
+        // start thread and load first items on page.
+        try {
+            Looper.prepare();
 
-                handler = new Handler();
-                queryFirstItems();
+            handler = new Handler();
+            queryFirstItems();
 
-                Looper.loop(); // gogogo!
-            }
-            catch (Throwable t) {
-                Log.e(TAG, "ListThread halted because of error: ", t);
-            }
+            Looper.loop(); // gogogo!
+        }
+        catch (Throwable t) {
+            Log.e(TAG, "ListThread halted because of error: ", t);
         }
     }
 
 }
-
-

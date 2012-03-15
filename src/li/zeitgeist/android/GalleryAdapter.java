@@ -29,33 +29,62 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 
+/**
+ * ListView Adapter for the Thumbnail Gallery.
+ *
+ * This uses the itemWorker as a datasource for the Item instances
+ * the API provides, the Thumbnail URL of the items is then used to
+ * download the thumbnail bitmaps (and cache them) in the
+ * thumbnailWorker.
+ */
 public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener {
 
+    /**
+     * Standard android logging tag.
+     */
     private static final String TAG = ZeitgeistApp.TAG + ":GalleryAdapter";
     
+    /**
+     * The GalleryActivity instance that created the adapter.
+     */
     private GalleryActivity galleryActivity;
-    private ItemWorker itemProvider;
-    private ThumbnailWorker thumbnailProvider;
     
+    /**
+     * Worker thread for item metadata.
+     */
+    private ItemWorker itemWorker;
+    
+    /**
+     * Worker thread pool that downloads thumbnail bitmaps.
+     */
+    private ThumbnailWorker thumbnailWorker;
+    
+    /**
+     * Constructs the adapter.
+     * 
+     * @param galleryActivity that creates the adapter
+     * @param itemWorker
+     * @param thumbnailWorker
+     */
     public GalleryAdapter(GalleryActivity galleryActivity,
-      ItemWorker itemProvider, 
-      ThumbnailWorker thumbnailProvider) {
+            ItemWorker itemWorker, 
+            ThumbnailWorker thumbnailWorker) {
         super();
         this.galleryActivity = galleryActivity;
-        this.itemProvider = itemProvider;
-        this.thumbnailProvider = thumbnailProvider;
-        
-        itemProvider.addUpdatedItemsListener(this);
+        this.itemWorker = itemWorker;
+        this.thumbnailWorker = thumbnailWorker;
+
+        itemWorker.addUpdatedItemsListener(this);
     }
 
     @Override
     public int getCount() {
-        return itemProvider.getItemCount();
+        return itemWorker.getItemCount();
     }
 
     @Override
     public Item getItem(int position) {
-        return itemProvider.getItemByPosition(position);
+        return itemWorker.getItemByPosition(position);
     }
 
     @Override
@@ -63,6 +92,7 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
         return getItem(position).getId();
     }
     
+    @Override
     public void onUpdatedItems(List<Item> newItems) {
         galleryActivity.getGridView().post(new Runnable() {
             public void run() {
@@ -72,6 +102,7 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
         });
     }
 
+    @Override
     public void onError(final String error) {
         galleryActivity.getGridView().post(new Runnable() {
             public void run() {
@@ -99,11 +130,9 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
         // hide previous image, show progress circle
         galleryActivity.showItemViewProgressBar(view);
         
-
-        
         // last item also triggers the loading of older items
-        if (itemProvider.getItemCount() == position+1) {
-            itemProvider.queryOlderItems();
+        if (itemWorker.getItemCount() == position+1) {
+            itemWorker.queryOlderItems();
             //return view;
         }
         
@@ -113,15 +142,15 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
         view.setTag(item.getId());
         Log.v(TAG, "view tagged: " + String.valueOf(item.getId()));
         
-        if (thumbnailProvider.isMemCached(item)) {
+        if (thumbnailWorker.isMemCached(item)) {
             Log.v(TAG, "updateItemView in ui thread, memcached: " + String.valueOf(item.getId()));
-            galleryActivity.updateItemView(view, thumbnailProvider.getBitmapByItem(item));
+            galleryActivity.updateItemView(view, thumbnailWorker.getBitmapByItem(item));
         }
         else {
             // load bitmap from disk or web and update the view
             // within the UI thread, other loadThumbnail()'s override the callback
             Log.v(TAG, "loadThumbnail() for id: " + String.valueOf(item.getId()));
-            thumbnailProvider.loadThumbnail(item, 
+            thumbnailWorker.loadThumbnail(item, 
                     new ThumbnailWorker.LoadedThumbnailListener() {
                 @Override
                 public void onLoadedThumbnail(final int id, final Bitmap bitmap) {

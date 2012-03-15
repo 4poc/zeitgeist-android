@@ -67,17 +67,29 @@ public class ThumbnailWorker implements UpdatedItemsListener {
         public void onLoadedThumbnail(final int id, final Bitmap bitmap);
     }
 
-    // in-memory cache
+    /**
+     * In-Memory cache, with a fixed size.
+     */
     private LruCache<Integer, Bitmap> memCache = null;
 
-    // disk cache
+    /**
+     * Disk cache, points to sdcard application cache.
+     */
     private File diskCache;
 
-    // the thread pool
+    /**
+     * Thread Pool for downloading thumbnail images.
+     */
     private ExecutorService pool;
     
+    /**
+     * The bitmap to overlay video thumbnails with.
+     */
     private Bitmap videoOverlayBitmap;
     
+    /**
+     * Zeitgeist Java API instance.
+     */
     private ZeitgeistApi api;
   
     /**
@@ -85,6 +97,8 @@ public class ThumbnailWorker implements UpdatedItemsListener {
      *
      * This starts the thread pool, initializes the memory cache,
      * and creates the directories for the disk-cache (if necessary).
+     * 
+     * @param context of the gallery service.
      */
     public ThumbnailWorker(Context context) {
         Log.v(TAG, "constructed");
@@ -128,7 +142,7 @@ public class ThumbnailWorker implements UpdatedItemsListener {
      * Loads thumbnail bitmap from disk or web.
      *
      * @param item api item object
-     * @param runnable called with the bitmap
+     * @param loadedListener called with the bitmap
      */
     public void loadThumbnail(final Item item, 
       final LoadedThumbnailListener loadedListener) {
@@ -141,6 +155,12 @@ public class ThumbnailWorker implements UpdatedItemsListener {
     }
     
 
+    /**
+     * Retrieve thumbnail bitmap from cache or web return.
+     * 
+     * @param item
+     * @return bitmap instance
+     */
     public Bitmap getBitmapByItem(Item item) {
         if (item.getImage() == null) {
             Log.w(TAG, "tried to load item without image");
@@ -175,10 +195,23 @@ public class ThumbnailWorker implements UpdatedItemsListener {
         return bitmap;
     }
 
+    /**
+     * Draw the video overlay (play icon) on top of the bitmap.
+     * 
+     * @param bitmap to draw bitmap on.
+     * @return bitmap instance with the overlay on it.
+     */
     private Bitmap drawVideoOverlay(Bitmap bitmap) {
         return drawBitmapOverlay(bitmap, videoOverlayBitmap);
     }
     
+    /**
+     * Draw overlay on a bitmap.
+     * 
+     * @param bitmap
+     * @param overlay
+     * @return new bitmap
+     */
     private Bitmap drawBitmapOverlay(Bitmap bitmap, Bitmap overlay) {
         // create plain empty bitmap
         Bitmap plainBitmap = Bitmap.createBitmap(
@@ -197,20 +230,44 @@ public class ThumbnailWorker implements UpdatedItemsListener {
         return plainBitmap;
     }
 
+    /**
+     * True if the thumbnail bitmap exists on the sdcard cache.
+     * 
+     * @param item
+     * @return boolean
+     */
     private boolean isDiskCached(Item item) {
         return getDiskCacheFile(item).exists();
     }
 
+    /**
+     * Return disk cached thumbnail file.
+     * 
+     * @param item
+     * @return file instance.
+     */
     private File getDiskCacheFile(Item item) {
         return new File(diskCache, String.format("thumb_%d.jpg", item.getId()));
     }
     
+    /**
+     * Loads the bitmap from the sdcard into a Bitmap instance and return.
+     * 
+     * @param item
+     * @return newly loaded Bitmap instance.
+     */
     private Bitmap loadFromDiskCache(Item item) {
         Log.v(TAG, "load from disk cache");
         File file = getDiskCacheFile(item);
         return BitmapFactory.decodeFile(file.getAbsolutePath());
     }
 
+    /**
+     * Store item thumbnail bitmap instance to disk cache.
+     * 
+     * @param item
+     * @param bitmap
+     */
     private void saveToDiskCache(Item item, Bitmap bitmap) {
         Log.v(TAG, "save to disk cache");
         File file = getDiskCacheFile(item);
@@ -230,6 +287,12 @@ public class ThumbnailWorker implements UpdatedItemsListener {
         }
     }
 
+    /**
+     * Return true if the thumbnail bitmap exists in memory.
+     * 
+     * @param item
+     * @return boolean
+     */
     public boolean isMemCached(Item item) {
         Bitmap bitmap = null;
         synchronized (memCache) {
@@ -253,6 +316,12 @@ public class ThumbnailWorker implements UpdatedItemsListener {
         return bitmap;
     }
     
+    /**
+     * Store bitmap instance in memory lru cache.
+     * 
+     * @param item
+     * @param bitmap
+     */
     private void saveToMemCache(Item item, Bitmap bitmap) {
     	// Log.v(TAG, "save to memory cache");
         synchronized (memCache) {
@@ -292,6 +361,7 @@ public class ThumbnailWorker implements UpdatedItemsListener {
 
 	@Override
 	public void onUpdatedItems(List<Item> newItemsList) {
+	    // load the thumbnails prematurely if new items are loaded.
 	    if (newItemsList != null) {
 	        for (Item item : newItemsList) {
 	            loadThumbnail(item, null);
@@ -299,13 +369,14 @@ public class ThumbnailWorker implements UpdatedItemsListener {
 	    }
 	}
 
+    @Override
     public void onError(String error) {
     }
 
+    /**
+     * Stops running downloads and shuts down the thread pool.
+     */
     public void stopThreadPool() {
         pool.shutdownNow();
     }
-
-
 }
-
