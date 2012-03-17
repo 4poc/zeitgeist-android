@@ -53,7 +53,7 @@ public class ThumbnailWorker implements UpdatedItemsListener {
     /**
      * Standard android logging tag.
      */
-    private static final String TAG = ZeitgeistApp.TAG + ":ThumbnailProvider";
+    private static final String TAG = ZeitgeistApp.TAG + ":ThumbnailWorker";
 
     /**
      * How many threads the ThreadPool (ExecutorService) should use.
@@ -377,6 +377,7 @@ public class ThumbnailWorker implements UpdatedItemsListener {
      * Stops running downloads and shuts down the thread pool.
      */
     public void stopThreadPool() {
+        Log.i(TAG, "stopping thread pool");
         pool.shutdownNow();
     }
 }

@@ -24,6 +24,13 @@ import li.zeitgeist.api.*;
 import li.zeitgeist.api.Item.Type;
 import li.zeitgeist.api.error.ZeitgeistError;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -78,6 +85,11 @@ public class ItemWorker extends Thread {
     private SortedMap<Integer, Item> itemCache;
     
     /**
+     * File on the sdcard storing the serialized itemCache.
+     */
+    private File itemDiskCache;
+    
+    /**
      * Hide items of type video from the position cache.
      * 
      * Other items are kept in the itemCache but are excluded
@@ -125,6 +137,57 @@ public class ItemWorker extends Thread {
         // start itself
         if (!isAlive()) {
             start();
+        }
+        
+        // get File object pointing to the disk cache of the itemCache
+        File externalStorageDirectory = context.getExternalFilesDir(null);
+        itemDiskCache = new File(externalStorageDirectory, "item_cache.bin");
+        Log.d(TAG, "item disk cache: " + itemDiskCache.getAbsolutePath());
+        
+        // load existing cache:
+        loadItemDiskCache(); 
+    }
+
+    private void loadItemDiskCache() {
+        if (itemDiskCache.exists()) {
+            Log.v(TAG, "load item cache from disk");
+            try {
+                FileInputStream fis = new FileInputStream(itemDiskCache);
+                ObjectInputStream is = new ObjectInputStream(fis);
+                
+                itemCache = (TreeMap<Integer, Item>) is.readObject();
+                
+                // update/rebuild position cache
+                createPositionCache();
+                
+            } catch (FileNotFoundException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    public void saveItemDiskCache() {
+        Log.v(TAG, "saving item cache on disk");
+        FileOutputStream fos;
+        ObjectOutputStream os;
+        try {
+            fos = new FileOutputStream(itemDiskCache);
+            os = new ObjectOutputStream(fos);
+            os.writeObject(itemCache);
+        
+        } catch (FileNotFoundException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
     }
 

@@ -66,14 +66,11 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         
         doBindService();
 
-
         // Disable the title bar
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         // Set main layout
         setContentView(R.layout.item);
-        
-
         
         // Find and setup the WebView to show the item
         webView = (WebView) findViewById(R.id.webView);

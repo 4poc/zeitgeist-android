@@ -80,7 +80,7 @@ public class GalleryService extends Service {
     @Override
     public void onDestroy() {
         Log.d(TAG, "onDestroy");
-        
+
         // stop worker threads
         itemWorker.stopThread();
         thumbnailWorker.stopThreadPool();

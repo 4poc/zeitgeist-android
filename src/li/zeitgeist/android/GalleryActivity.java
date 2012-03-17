@@ -206,6 +206,9 @@ public class GalleryActivity extends Activity
     public void onPause() {
         super.onPause();
         Log.v(TAG, "onPause()");
+
+        // stores the memory cache of item objects to sdcard
+        itemWorker.saveItemDiskCache();
     }
 
     @Override
