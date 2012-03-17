@@ -199,6 +199,10 @@ public class GalleryActivity extends Activity
             .setOnClickListener(galleryBarOnClickListener);
         ((ImageView) findViewById(R.id.galleryBarPreferencesIcon))
             .setOnClickListener(galleryBarOnClickListener);
+        ((ImageView) findViewById(R.id.galleryBarRefreshIcon))
+            .setOnClickListener(galleryBarOnClickListener);        
+        
+        
         
         
         galleryBarProgressIcon = 
@@ -511,7 +515,7 @@ public class GalleryActivity extends Activity
         
         // click on refresh queries the loading in the itemWorker
         case R.id.galleryMenuRefreshItem:
-            Toast.makeText(this, "Fetching new items...", Toast.LENGTH_SHORT).show();
+            showGalleryBarProgressIcon();
             itemWorker.queryNewerItems();
             break;
 
@@ -629,6 +633,10 @@ public class GalleryActivity extends Activity
                 Intent settingsActivity = new Intent(getBaseContext(), 
                         SettingsActivity.class);
                 startActivity(settingsActivity);
+                break;
+            case R.id.galleryBarRefreshIcon:
+                showGalleryBarProgressIcon();
+                itemWorker.queryNewerItems();
                 break;
             }
         }
