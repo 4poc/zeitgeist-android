@@ -64,6 +64,15 @@ public class GalleryActivity extends Activity
      */
     private ProgressDialog progressDialog = null;
     
+    
+    /**
+     * Square loading animation in the gallery bar.
+     * 
+     * Is hidden by default.
+     */
+    private ProgressBar galleryBarProgressIcon;
+
+    
     /**
      * Instance of the listview/GridView the gallery is displaying.
      */
@@ -157,14 +166,17 @@ public class GalleryActivity extends Activity
         super.onCreate(savedInstanceState);
         Log.v(TAG, "onCreate()");
         
-        // bind the worker, starts (if not already) the workers
-        doBindService();
-        
         // Disable the title bar
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         // Set main layout
         setContentView(R.layout.gallery);
+        
+        // show initial item loading modal dialog
+        showProgressDialog();
+
+        // bind and/or create/start the local service with workers
+        doBindService();
         
         // set the screen width (800 or 480 on desire z)
         Display display = getWindowManager().getDefaultDisplay();
@@ -188,8 +200,9 @@ public class GalleryActivity extends Activity
         ((ImageView) findViewById(R.id.galleryBarPreferencesIcon))
             .setOnClickListener(galleryBarOnClickListener);
         
-        // show progress dialog per default
-        progressDialog = ProgressDialog.show(this, null, "Loading...", true);
+        
+        galleryBarProgressIcon = 
+                (ProgressBar) findViewById(R.id.galleryBarProgressIcon);
     }
     
     @Override
@@ -197,8 +210,8 @@ public class GalleryActivity extends Activity
         super.onDestroy();
         Log.v(TAG, "onDestroy()");
 
-        progressDialog.dismiss();
-        
+        hideProgressDialog();
+
         doUnbindService();
     }
 
@@ -208,7 +221,9 @@ public class GalleryActivity extends Activity
         Log.v(TAG, "onPause()");
 
         // stores the memory cache of item objects to sdcard
-        itemWorker.saveItemDiskCache();
+        if (itemWorker != null) {
+            itemWorker.saveItemDiskCache();
+        }
     }
 
     @Override
@@ -326,14 +341,41 @@ public class GalleryActivity extends Activity
     }
     
     /**
-     * Dismiss the loading dialog.
+     * Create and show a modal progress dialog.
+     * 
+     * Its used to indicate the initial loading of items by the 
+     * itemWorker. The dialog is dismissed either when the memory
+     * or disk cache is restored or items are loaded from web.
+     * 
+     * There is a second progressBar that indicates the consecutive
+     * loading of new items in background.
+     */
+    public void showProgressDialog() {
+        progressDialog = ProgressDialog.show(this, null, "Loading...", true);
+    }
+    
+    /**
+     * Dismiss the item loading dialog.
      */
     public void hideProgressDialog() {
     	if (!isFinishing() && progressDialog != null && progressDialog.isShowing()) {
-    	    // progressDialog.getWindow()
-    		// progressDialog.dismiss(); this causes an exception??!
-    		progressDialog.hide();
+    		progressDialog.dismiss(); // progressDialog.hide();
+    		progressDialog = null;
     	}
+    }
+    
+    /**
+     * Shows the square loading animation in the gallery bar.
+     */
+    public void showGalleryBarProgressIcon() {
+        galleryBarProgressIcon.setVisibility(View.VISIBLE);
+    }
+    
+    /**
+     * Hides the square loading animation in the gallery bar.
+     */
+    public void hideGalleryBarProgressIcon() {
+        galleryBarProgressIcon.setVisibility(View.GONE);
     }
 
     /**

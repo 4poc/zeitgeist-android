@@ -97,6 +97,7 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
         galleryActivity.getGridView().post(new Runnable() {
             public void run() {
                 galleryActivity.hideProgressDialog();
+                galleryActivity.hideGalleryBarProgressIcon();
                 notifyDataSetChanged();
             }
         });
@@ -108,6 +109,7 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
             public void run() {
                 Log.v(TAG, "onError called");
                 galleryActivity.hideProgressDialog();
+                galleryActivity.hideGalleryBarProgressIcon();
                 galleryActivity.showErrorAlert(error);
             }
         });
@@ -133,6 +135,7 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
         // last item also triggers the loading of older items
         if (itemWorker.getItemCount() == position+1) {
             itemWorker.queryOlderItems();
+            galleryActivity.showGalleryBarProgressIcon();
             //return view;
         }
         

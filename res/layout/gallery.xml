@@ -15,6 +15,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/app_icon_square" />
+        
+        <ProgressBar
+            android:id="@+id/galleryBarProgressIcon"
+            android:visibility="gone"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_gravity="center" />
 
         <LinearLayout
             android:layout_width="fill_parent"
