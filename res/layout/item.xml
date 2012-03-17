@@ -3,11 +3,62 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical" >
+    
+    <!-- "Item Bar" -->
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/gallery_bar_background" >
 
-    <WebView
-        android:id="@+id/webView"
-        android:background="@color/item_webview_background"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        <ImageView
+            android:id="@+id/itemBarLogo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/app_icon_square" />
+
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_gravity="right"
+            android:gravity="right" >
+            
+            <ImageView
+                android:id="@+id/itemBarDetailIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:src="@drawable/bar_details" />
+            
+            <ImageView
+                android:id="@+id/itemBarPreviousIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/bar_previous" />
+
+            <ImageView
+                android:id="@+id/itemBarNextIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/bar_next" />
+
+        </LinearLayout>
+    </LinearLayout>
+    
+    <ViewSwitcher
+        android:id="@+id/itemDetailViewSwitcher"
+                    android:layout_width="match_parent"
+            android:layout_height="match_parent">
+        
+        <include layout="@layout/item_details" />
+        
+	    <WebView
+	        android:id="@+id/itemWebView"
+	        android:background="@color/item_webview_background"
+	        android:layout_width="match_parent"
+	        android:layout_height="match_parent" />
+        
+    </ViewSwitcher>
+    
+
 
 </LinearLayout>

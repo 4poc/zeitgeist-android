@@ -18,24 +18,30 @@
 package li.zeitgeist.android;
 
 import li.zeitgeist.android.worker.ItemWorker;
+import li.zeitgeist.android.worker.ThumbnailWorker;
 // import li.zeitgeist.android.provider.ThumbnailProvider;
 import li.zeitgeist.api.Item;
+import li.zeitgeist.api.Item.Type;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.text.ClipboardManager;
 import android.util.Log;
 import android.view.*;
 import android.view.MenuItem.OnMenuItemClickListener;
+import android.view.View.OnClickListener;
 import android.widget.*;
 import android.webkit.*;
 
-public class ItemActivity extends Activity implements OnMenuItemClickListener {
+public class ItemActivity extends Activity implements OnMenuItemClickListener, OnClickListener {
 
     /**
      * Standard android logging tag.
@@ -44,20 +50,29 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
     
     private ItemWorker itemWorker;
     
+    private ThumbnailWorker thumbnailWorker;
+    
     private GalleryService boundService;
     
     private boolean isBoundService;
 
+    private ViewSwitcher itemDetailViewSwitcher;
     
     private Item item;
     
-    private WebView webView;
+    private WebView itemWebView;
+    
+    private ImageView itemBarDetailIcon;
     
     public ItemActivity() {
         super();
         Log.v(TAG, "constructed");
     }
 
+    
+    private ImageView detailThumbnail;
+    
+    private TextView detailId;
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -72,38 +87,40 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         // Set main layout
         setContentView(R.layout.item);
         
-        // Find and setup the WebView to show the item
-        webView = (WebView) findViewById(R.id.webView);
-        webView.setBackgroundColor(R.color.item_webview_background);
+        
+        
+        ((ImageView) findViewById(R.id.itemBarLogo)).setOnClickListener(this);
+        
+        ((ImageView) findViewById(R.id.itemBarPreviousIcon)).setOnClickListener(this);
+        ((ImageView) findViewById(R.id.itemBarNextIcon)).setOnClickListener(this);
+        
+        itemBarDetailIcon = (ImageView) findViewById(R.id.itemBarDetailIcon);
+        itemBarDetailIcon.setOnClickListener(this);
+        
+        
+        
+        
+        detailThumbnail = (ImageView) findViewById(R.id.itemDetailThumbnail);
+        detailId = (TextView) findViewById(R.id.itemDetailId);
 
-        WebSettings settings = webView.getSettings();
+        detailThumbnail.setOnClickListener(this);
+
+        
+        itemDetailViewSwitcher = (ViewSwitcher) findViewById(R.id.itemDetailViewSwitcher);
+        
+        itemDetailViewSwitcher.setDisplayedChild(0);
+        
+        // Find and setup the WebView to show the item
+        itemWebView = (WebView) findViewById(R.id.itemWebView);
+        itemWebView.setBackgroundColor(R.color.item_webview_background);
+
+        WebSettings settings = itemWebView.getSettings();
         settings.setBuiltInZoomControls(true);
         settings.setSupportZoom(true);
         settings.setDefaultZoom(WebSettings.ZoomDensity.FAR);
         settings.setUseWideViewPort(true);
         
-        final ProgressBar progressBar = new ProgressBar(this);
-        progressBar.setMax(100);
-        progressBar.bringToFront();
-        
-        webView.setWebChromeClient(new WebChromeClient() {
-            public void onProgressChanged(WebView view, int progress) {
-                progressBar.setProgress(progress);
-                if (progress >= 100) {
-                    progressBar.setVisibility(View.INVISIBLE);
-                }
-            }
-        });
 
-        webView.setWebViewClient(new WebViewClient() {
-          public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-            new AlertDialog.Builder(view.getContext())
-            .setTitle("Oops")
-            .setMessage("Error: " + description)
-            .setPositiveButton(android.R.string.ok, null)
-            .show();
-          }
-        });
 
     }
     
@@ -134,6 +151,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
             // get the item worker instance
             itemWorker = boundService.getItemWorker();
             
+            thumbnailWorker = boundService.getThumbnailWorker();
             
             // Get the item object this activity is about:
             Bundle bundle = getIntent().getExtras();
@@ -143,7 +161,13 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
             }
             item = itemWorker.getItemById(bundle.getInt("id"));
             
-            webView.loadUrl(item.getImage().getImageUrl());
+            if (isShowItemDetails()) {
+                showDetails();
+            }
+            else {
+                showInWebView();
+            }
+
         }
 
         @Override
@@ -173,6 +197,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
     public void onPause() {
         super.onPause();
         Log.v(TAG, "onPause()");
+
     }
 
     @Override
@@ -198,4 +223,124 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener {
         
         return true;
     }
+    
+    private void showInWebView() {
+        setShowItemDetails(false);
+        
+        
+        // click on video thumbnails starts browser or youtube application/etc.
+        if (item.getType() == Type.VIDEO) {
+            Intent openLinkIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(item.getSource()));
+            startActivity(openLinkIntent);
+            return;
+        }
+        
+        
+        itemDetailViewSwitcher.setDisplayedChild(1);
+        itemBarDetailIcon.setVisibility(View.VISIBLE);
+        
+
+        
+        final ProgressBar progressBar = new ProgressBar(this);
+        progressBar.setMax(100);
+        progressBar.bringToFront();
+        
+        itemWebView.setWebChromeClient(new WebChromeClient() {
+            public void onProgressChanged(WebView view, int progress) {
+                progressBar.setProgress(progress);
+                if (progress >= 100) {
+                    progressBar.setVisibility(View.INVISIBLE);
+                }
+            }
+        });
+
+        itemWebView.setWebViewClient(new WebViewClient() {
+          public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            new AlertDialog.Builder(view.getContext())
+            .setTitle("Oops")
+            .setMessage("Error: " + description)
+            .setPositiveButton(android.R.string.ok, null)
+            .show();
+          }
+        });
+        
+        itemWebView.loadUrl(item.getImage().getImageUrl());
+    }
+    
+    private void showDetails() {
+        setShowItemDetails(true);
+        
+        itemDetailViewSwitcher.setDisplayedChild(0);
+        itemBarDetailIcon.setVisibility(View.GONE);
+        
+        detailThumbnail.setImageBitmap(thumbnailWorker.getBitmapByItem(item));
+        detailId.setText("Item #" + String.valueOf(item.getId()));
+
+        
+    }
+
+    private void switchToItemById(int itemId) {
+        Intent showItemActivityIntent = new Intent(this, ItemActivity.class);
+        Bundle itemIdBundle = new Bundle();
+        itemIdBundle.putInt("id", itemId);
+        showItemActivityIntent.putExtras(itemIdBundle);
+        startActivity(showItemActivityIntent);
+    }
+    
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+        case R.id.itemDetailThumbnail:
+            showInWebView();
+            break;
+        case R.id.itemBarDetailIcon:
+            showDetails();
+            break;
+            
+        case R.id.itemBarLogo:
+            
+            startActivity(new Intent(this, GalleryActivity.class));
+            
+            
+            break;
+            
+        case R.id.itemBarPreviousIcon:
+            
+            
+            
+            switchToItemById(itemWorker.getPreviousItemId(item.getId()));
+            
+            break;
+
+        case R.id.itemBarNextIcon:
+            
+            switchToItemById(itemWorker.getNextItemId(item.getId()));
+            
+            break;
+            
+        }
+        
+    }
+    
+    private boolean isShowItemDetails() {
+        SharedPreferences p = 
+                PreferenceManager.getDefaultSharedPreferences(this);
+        
+        return p.getBoolean("showItemDetails", true);
+    }
+    
+    private void setShowItemDetails(boolean showItemDetails) {
+        SharedPreferences prefs = 
+                PreferenceManager.getDefaultSharedPreferences(this);
+        
+        SharedPreferences.Editor editor = prefs.edit();
+        
+        
+        
+        
+        editor.putBoolean("showItemDetails", showItemDetails);
+        editor.commit();
+        Log.v(TAG, "store showItemDetails : " + (showItemDetails ? "true" : "false"));
+    }
+    
 }

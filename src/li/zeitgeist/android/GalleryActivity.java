@@ -491,17 +491,19 @@ public class GalleryActivity extends Activity
         if (item == null) return; // huh?
         
         // click on video thumbnails starts browser or youtube application/etc.
+        /*
         if (item.getType() == Type.VIDEO) {
             Intent openLinkIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(item.getSource()));
             startActivity(openLinkIntent);
         }
         else { // click starts the item activity that shows the fullsized image
+            */
             Intent showItemActivityIntent = new Intent(this, ItemActivity.class);
             Bundle itemIdBundle = new Bundle();
             itemIdBundle.putInt("id", item.getId());
             showItemActivityIntent.putExtras(itemIdBundle);
             startActivity(showItemActivityIntent);
-        }
+        //}
     }
 
     @Override

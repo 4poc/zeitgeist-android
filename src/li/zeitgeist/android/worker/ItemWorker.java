@@ -468,4 +468,38 @@ public class ItemWorker extends Thread {
         }
     }
 
+    /**
+     * Search the position cache for the previous ID before the provided itemId.
+     * 
+     * @param itemId
+     * @return the previous ID.
+     */
+    public int getPreviousItemId(int itemId) {
+        int pos = positionCache.indexOf(itemId) - 1;
+        
+        if (pos > 0 && pos < positionCache.size()) {
+            return positionCache.get(pos);
+        }
+        else {
+            return itemId;
+        }
+    }
+    
+    /**
+     * Search the position cache for the next ID after the provided itemId.
+     * 
+     * @param itemId
+     * @return the next ID.
+     */
+    public int getNextItemId(int itemId) {
+        int pos = positionCache.indexOf(itemId) + 1;
+        
+        if (pos > 0 && pos < positionCache.size()) {
+            return positionCache.get(pos);
+        }
+        else {
+            return itemId;
+        }
+    }
+
 }
