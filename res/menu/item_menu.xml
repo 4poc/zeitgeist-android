@@ -4,7 +4,7 @@
     <item
         android:id="@+id/itemMenuBackItem"
         android:icon="@drawable/ic_menu_back"
-        android:title="Back"
+        android:title="Back to Gallery"
         />
 
     <item

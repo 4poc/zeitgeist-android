@@ -3,8 +3,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical" >
-    
+
     <!-- "Item Bar" -->
+
     <LinearLayout
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
@@ -21,14 +22,14 @@
             android:layout_height="fill_parent"
             android:layout_gravity="right"
             android:gravity="right" >
-            
+
             <ImageView
                 android:id="@+id/itemBarDetailIcon"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:visibility="gone"
-                android:src="@drawable/bar_details" />
-            
+                android:src="@drawable/bar_details"
+                android:visibility="gone" />
+
             <ImageView
                 android:id="@+id/itemBarPreviousIcon"
                 android:layout_width="wrap_content"
@@ -40,25 +41,21 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/bar_next" />
-
         </LinearLayout>
     </LinearLayout>
-    
+
     <ViewSwitcher
         android:id="@+id/itemDetailViewSwitcher"
-                    android:layout_width="match_parent"
-            android:layout_height="match_parent">
-        
-        <include layout="@layout/item_details" />
-        
-	    <WebView
-	        android:id="@+id/itemWebView"
-	        android:background="@color/item_webview_background"
-	        android:layout_width="match_parent"
-	        android:layout_height="match_parent" />
-        
-    </ViewSwitcher>
-    
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" >
 
+        <include layout="@layout/item_details" />
+
+        <WebView
+            android:id="@+id/itemWebView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/item_webview_background" />
+    </ViewSwitcher>
 
 </LinearLayout>

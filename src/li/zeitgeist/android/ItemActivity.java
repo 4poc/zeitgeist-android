@@ -17,18 +17,20 @@
  */
 package li.zeitgeist.android;
 
-import li.zeitgeist.android.worker.ItemWorker;
-import li.zeitgeist.android.worker.ThumbnailWorker;
-// import li.zeitgeist.android.provider.ThumbnailProvider;
+import java.util.List;
+
+import li.zeitgeist.android.worker.*;
 import li.zeitgeist.api.Item;
 import li.zeitgeist.api.Item.Type;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -41,12 +43,14 @@ import android.view.View.OnClickListener;
 import android.widget.*;
 import android.webkit.*;
 
-public class ItemActivity extends Activity implements OnMenuItemClickListener, OnClickListener {
+public class ItemActivity extends Activity implements OnMenuItemClickListener, OnClickListener, ItemWorker.UpdatedItemsListener {
 
     /**
      * Standard android logging tag.
      */
     private static final String TAG = ZeitgeistApp.TAG + ":ItemActivity";
+    
+    private Item item;
     
     private ItemWorker itemWorker;
     
@@ -55,30 +59,34 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
     private GalleryService boundService;
     
     private boolean isBoundService;
+    
+    private ImageView itemBarDetailIcon;
 
     private ViewSwitcher itemDetailViewSwitcher;
     
-    private Item item;
+    private ImageView detailThumbnail;
     
+    private TextView detailId;
+    
+    private TextView detailTags;
+
     private WebView itemWebView;
+
+    private boolean switchToPreviousItem;
     
-    private ImageView itemBarDetailIcon;
+    private boolean switchToNextItem;
     
     public ItemActivity() {
         super();
         Log.v(TAG, "constructed");
     }
-
-    
-    private ImageView detailThumbnail;
-    
-    private TextView detailId;
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.v(TAG, "onCreate()");
         
+        // binds the local gallery service, and get item/thumbnail workers
         doBindService();
 
         // Disable the title bar
@@ -86,42 +94,34 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
 
         // Set main layout
         setContentView(R.layout.item);
+
+        // always visible item bar icons:
+        findViewById(R.id.itemBarLogo).setOnClickListener(this);
+        findViewById(R.id.itemBarPreviousIcon).setOnClickListener(this);
+        findViewById(R.id.itemBarNextIcon).setOnClickListener(this);
         
-        
-        
-        ((ImageView) findViewById(R.id.itemBarLogo)).setOnClickListener(this);
-        
-        ((ImageView) findViewById(R.id.itemBarPreviousIcon)).setOnClickListener(this);
-        ((ImageView) findViewById(R.id.itemBarNextIcon)).setOnClickListener(this);
-        
+        // detail icon is only visible when the webview is shown
         itemBarDetailIcon = (ImageView) findViewById(R.id.itemBarDetailIcon);
         itemBarDetailIcon.setOnClickListener(this);
         
-        
-        
-        
+        // views that display detail information about that item:
         detailThumbnail = (ImageView) findViewById(R.id.itemDetailThumbnail);
-        detailId = (TextView) findViewById(R.id.itemDetailId);
-
         detailThumbnail.setOnClickListener(this);
+        detailId = (TextView) findViewById(R.id.itemDetailId);
+        detailTags = (TextView) findViewById(R.id.itemDetailTags);
 
+        // switches between the details and the webview that displays full-sized
+        itemDetailViewSwitcher = 
+                (ViewSwitcher) findViewById(R.id.itemDetailViewSwitcher);
         
-        itemDetailViewSwitcher = (ViewSwitcher) findViewById(R.id.itemDetailViewSwitcher);
-        
-        itemDetailViewSwitcher.setDisplayedChild(0);
-        
-        // Find and setup the WebView to show the item
+        // customize webview that displays the full-sized images
         itemWebView = (WebView) findViewById(R.id.itemWebView);
         itemWebView.setBackgroundColor(R.color.item_webview_background);
-
         WebSettings settings = itemWebView.getSettings();
         settings.setBuiltInZoomControls(true);
         settings.setSupportZoom(true);
         settings.setDefaultZoom(WebSettings.ZoomDensity.FAR);
         settings.setUseWideViewPort(true);
-        
-
-
     }
     
     private void doBindService() {
@@ -139,7 +139,6 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
     }
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
-
         @Override
         public void onServiceConnected(ComponentName className, IBinder service) {
             Log.v(TAG, "onServiceConnected");
@@ -148,10 +147,12 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
             // an existing
             boundService = ((GalleryService.GalleryServiceBinder) service).getService();
             
-            // get the item worker instance
+            // get the worker instances
             itemWorker = boundService.getItemWorker();
-            
             thumbnailWorker = boundService.getThumbnailWorker();
+            
+            // the user may request older/newer items via the next/prev icons
+            itemWorker.addUpdatedItemsListener(ItemActivity.this);
             
             // Get the item object this activity is about:
             Bundle bundle = getIntent().getExtras();
@@ -161,18 +162,20 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
             }
             item = itemWorker.getItemById(bundle.getInt("id"));
             
-            if (isShowItemDetails()) {
+            // it uses a preference to store if the details or 
+            // the webview should be displayed
+            if (isShowItemDetails() || item.getType() == Type.VIDEO) {
                 showDetails();
             }
             else {
-                showInWebView();
+                showWebView();
             }
-
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {}
     };
+
     
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -206,27 +209,46 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
         Log.v(TAG, "onResume()");
     }
 
-    @Override
-    public boolean onMenuItemClick(MenuItem menuItem) {
-        switch (menuItem.getItemId()) {
-        case R.id.itemMenuBackItem:
-            onBackPressed();
-            break;
-            
-        case R.id.itemMenuCopyUrlItem:
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            clipboard.setText(item.getImage().getImageUrl());
-            Toast.makeText(this, "URL Copied", Toast.LENGTH_SHORT).show();
-            break;
+    private void showDetails() {
+        // remember display mode in shared preferences
+        setShowItemDetails(true);
+        
+        // switch the viewswitcher to the details (linearlayout)
+        itemDetailViewSwitcher.setDisplayedChild(0);
+        
+        // hide the detail icon in the item bar
+        itemBarDetailIcon.setVisibility(View.GONE);
+        
+        // load thumbnail bitmap and assign to the thumbnail imageview
+        if (thumbnailWorker.isMemCached(item)) {
+            detailThumbnail.setImageBitmap(thumbnailWorker.getBitmapByItem(item));
+        }
+        else {
+            // load bitmap from disk or web and update the view
+            thumbnailWorker.loadThumbnail(item, 
+                    new ThumbnailWorker.LoadedThumbnailListener() {
+                @Override
+                public void onLoadedThumbnail(final int id, final Bitmap bitmap) {
+
+                    detailThumbnail.post(new Runnable() {
+                        public void run() {
+                            detailThumbnail.setImageBitmap(bitmap);
+                        }
+                    });
+                }
+            });
         }
         
+        // display the item id
+        detailId.setText("Item #" + String.valueOf(item.getId()));
         
-        return true;
+        // display the item tags
+        detailTags.setText("Tagged: " + Utils.join(item.getTagNames(), ", "));
     }
     
-    private void showInWebView() {
+    private void showWebView() {
+        // remember the last display mode
         setShowItemDetails(false);
-        
         
         // click on video thumbnails starts browser or youtube application/etc.
         if (item.getType() == Type.VIDEO) {
@@ -235,16 +257,16 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
             return;
         }
         
-        
+        // tell the viewswitcher to switch to the webview:
         itemDetailViewSwitcher.setDisplayedChild(1);
+        
+        // make the detail icon visible, allows to switch between detail/webview
         itemBarDetailIcon.setVisibility(View.VISIBLE);
         
-
-        
+        // show a progressbar during loading of the image
         final ProgressBar progressBar = new ProgressBar(this);
         progressBar.setMax(100);
         progressBar.bringToFront();
-        
         itemWebView.setWebChromeClient(new WebChromeClient() {
             public void onProgressChanged(WebView view, int progress) {
                 progressBar.setProgress(progress);
@@ -253,7 +275,6 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
                 }
             }
         });
-
         itemWebView.setWebViewClient(new WebViewClient() {
           public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
             new AlertDialog.Builder(view.getContext())
@@ -264,62 +285,8 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
           }
         });
         
+        // load the absolute full-sized image of this item
         itemWebView.loadUrl(item.getImage().getImageUrl());
-    }
-    
-    private void showDetails() {
-        setShowItemDetails(true);
-        
-        itemDetailViewSwitcher.setDisplayedChild(0);
-        itemBarDetailIcon.setVisibility(View.GONE);
-        
-        detailThumbnail.setImageBitmap(thumbnailWorker.getBitmapByItem(item));
-        detailId.setText("Item #" + String.valueOf(item.getId()));
-
-        
-    }
-
-    private void switchToItemById(int itemId) {
-        Intent showItemActivityIntent = new Intent(this, ItemActivity.class);
-        Bundle itemIdBundle = new Bundle();
-        itemIdBundle.putInt("id", itemId);
-        showItemActivityIntent.putExtras(itemIdBundle);
-        startActivity(showItemActivityIntent);
-    }
-    
-    @Override
-    public void onClick(View v) {
-        switch (v.getId()) {
-        case R.id.itemDetailThumbnail:
-            showInWebView();
-            break;
-        case R.id.itemBarDetailIcon:
-            showDetails();
-            break;
-            
-        case R.id.itemBarLogo:
-            
-            startActivity(new Intent(this, GalleryActivity.class));
-            
-            
-            break;
-            
-        case R.id.itemBarPreviousIcon:
-            
-            
-            
-            switchToItemById(itemWorker.getPreviousItemId(item.getId()));
-            
-            break;
-
-        case R.id.itemBarNextIcon:
-            
-            switchToItemById(itemWorker.getNextItemId(item.getId()));
-            
-            break;
-            
-        }
-        
     }
     
     private boolean isShowItemDetails() {
@@ -334,13 +301,116 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
                 PreferenceManager.getDefaultSharedPreferences(this);
         
         SharedPreferences.Editor editor = prefs.edit();
-        
-        
-        
-        
         editor.putBoolean("showItemDetails", showItemDetails);
         editor.commit();
-        Log.v(TAG, "store showItemDetails : " + (showItemDetails ? "true" : "false"));
+    }
+
+    private void switchToItemById(int itemId) {
+        Intent showItemActivityIntent = new Intent(this, ItemActivity.class);
+        Bundle itemIdBundle = new Bundle();
+        itemIdBundle.putInt("id", itemId);
+        showItemActivityIntent.putExtras(itemIdBundle);
+        startActivity(showItemActivityIntent);
     }
     
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+        // if the user clicks on the thumbnail it switches to the full-sized
+        // image in a webview
+        case R.id.itemDetailThumbnail:
+            showWebView();
+            break;
+            
+        // allows to switch back to the details
+        case R.id.itemBarDetailIcon:
+            showDetails();
+            break;
+        
+        // click on the zeitgeist logo always returns to the gallery
+        case R.id.itemBarLogo:
+            startActivity(new Intent(this, GalleryActivity.class));
+            break;
+            
+        // previous item, it uses the last position cache (filtering
+        //  in the gallery)
+        case R.id.itemBarPreviousIcon:
+            int prevItemId = itemWorker.getPreviousItemId(item.getId());
+            if (prevItemId == item.getId()) {
+                // item unavailable query for it:
+                itemWorker.queryNewerItems();
+
+                Toast.makeText(this, "Receiving newer items...", Toast.LENGTH_SHORT).show();
+                switchToPreviousItem = true;
+            }
+            else {
+                switchToItemById(prevItemId);
+            }
+            break;
+
+        // next item
+        case R.id.itemBarNextIcon:
+            int nextItemId = itemWorker.getNextItemId(item.getId());
+            if (nextItemId == item.getId()) {
+                // item unavailable query for it:
+                itemWorker.queryOlderItems();
+                
+                Toast.makeText(this, "Receiving older items...", Toast.LENGTH_SHORT).show();
+                switchToNextItem = true;
+            }
+            else {
+                switchToItemById(nextItemId);
+            }
+            break;
+
+        }        
+    }
+
+    @Override
+    public void onUpdatedItems(List<Item> newItemsList) {
+        if (switchToPreviousItem) {
+            for (int i = newItemsList.size(); i >= 0; i--) {
+                if (newItemsList.get(i).getId() > item.getId()) {
+                    switchToItemById(newItemsList.get(i).getId());
+                    break;
+                }
+            }
+        }
+        if (switchToNextItem) {
+            for (int i = 0; i < newItemsList.size(); i++) {
+                if (newItemsList.get(i).getId() < item.getId()) {
+                    switchToItemById(newItemsList.get(i).getId());
+                    break;
+                }
+            }
+        }
+        switchToNextItem = false;
+        switchToPreviousItem = false;
+    }
+
+    @Override
+    public void onError(String error) {
+    }
+    
+    @Override
+    public boolean onMenuItemClick(MenuItem menuItem) {
+        switch (menuItem.getItemId()) {
+        // back to the gallery
+        case R.id.itemMenuBackItem:
+            // onBackPressed();
+            startActivity(new Intent(this, GalleryActivity.class));
+            break;
+            
+        // copies the full-sized image url
+        case R.id.itemMenuCopyUrlItem:
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            clipboard.setText(item.getImage().getImageUrl());
+            Toast.makeText(this, "URL Copied", Toast.LENGTH_SHORT).show();
+            break;
+        }
+        
+        return true;
+    }
+
+
 }

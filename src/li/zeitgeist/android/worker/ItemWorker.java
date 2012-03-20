@@ -477,7 +477,7 @@ public class ItemWorker extends Thread {
     public int getPreviousItemId(int itemId) {
         int pos = positionCache.indexOf(itemId) - 1;
         
-        if (pos > 0 && pos < positionCache.size()) {
+        if (pos >= 0 && pos < positionCache.size()) {
             return positionCache.get(pos);
         }
         else {
@@ -494,7 +494,7 @@ public class ItemWorker extends Thread {
     public int getNextItemId(int itemId) {
         int pos = positionCache.indexOf(itemId) + 1;
         
-        if (pos > 0 && pos < positionCache.size()) {
+        if (pos >= 0 && pos < positionCache.size()) {
             return positionCache.get(pos);
         }
         else {
