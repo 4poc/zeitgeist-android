@@ -202,9 +202,6 @@ public class GalleryActivity extends Activity
         ((ImageView) findViewById(R.id.galleryBarRefreshIcon))
             .setOnClickListener(galleryBarOnClickListener);        
         
-        
-        
-        
         galleryBarProgressIcon = 
                 (ProgressBar) findViewById(R.id.galleryBarProgressIcon);
     }

@@ -41,11 +41,13 @@ import android.os.Looper;
 import android.util.Log;
 
 /**
- * ItemProvider for Item Objects.
+ * ItemWorker for Item Objects.
  * 
  * Is running a thread to download the item list, also provides
  * a position cache that is used for the position -> item id
  * mapping necessary by the gridview adapter.
+ * There is a single ItemWorker instance for the application.
+ * Also provides methods to update tags.
  * 
  * @author apoc
  * @see GalleryAdapter
@@ -65,6 +67,17 @@ public class ItemWorker extends Thread {
      */
     public interface UpdatedItemsListener {
         public void onUpdatedItems(List<Item> newItemsList);
+        public void onError(final String error);
+    }
+    
+    /**
+     * Interface to listen for updated tags.
+     * 
+     * Updates when tags are added or removed, the item
+     * includes the updated list of tags associated with the item.
+     */
+    public interface UpdatedItemTagsListener {
+        public void onUpdatedItemTags(final Item item);
         public void onError(final String error);
     }
 
@@ -262,6 +275,46 @@ public class ItemWorker extends Thread {
         }
         
         queryItems(lastId, -1);       
+    }
+    
+
+    /**
+     * Update Item Tags by ID.
+     * 
+     * This method creates or removes tags from an Item specified
+     * by ID. The listener is called (within the itemWorker thread!)
+     * with the updated Item object.
+     * The tags param is a comma separated list of tags, tags prefixed
+     * by - are deleted.
+     * 
+     * @param id of the item.
+     * @param tags comma separated list of tags to add or remove
+     * @param listener to call
+     */
+    public void updateItemTags(final int id, final String tags, 
+            final UpdatedItemTagsListener listener) {
+        if (!isAlive() || handler == null) {
+            return;
+        }
+        
+        Log.v(TAG, String.format("updateItemTags for %d with tags: %s", id, tags));
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Item item = api.update(id, tags);
+                    
+                    // update in cache
+                    if (itemCache.containsKey(id)) {
+                        itemCache.put(id, item);
+                    }
+                    
+                    listener.onUpdatedItemTags(item);
+                } catch (ZeitgeistError e) {
+                    Log.e(TAG, "Zeitgeist Error: " + e.getError());
+                    listener.onError(e.getError());
+                }
+            }});
     }
 
     /**

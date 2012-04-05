@@ -20,6 +20,7 @@ package li.zeitgeist.android;
 import java.util.List;
 
 import li.zeitgeist.android.worker.*;
+import li.zeitgeist.android.worker.ItemWorker.UpdatedItemTagsListener;
 import li.zeitgeist.api.Item;
 import li.zeitgeist.api.Item.Type;
 import android.app.Activity;
@@ -27,6 +28,7 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
@@ -40,7 +42,10 @@ import android.util.Log;
 import android.view.*;
 import android.view.MenuItem.OnMenuItemClickListener;
 import android.view.View.OnClickListener;
+import android.view.View.OnLongClickListener;
 import android.widget.*;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.AdapterView.OnItemLongClickListener;
 import android.webkit.*;
 
 public class ItemActivity extends Activity implements OnMenuItemClickListener, OnClickListener, ItemWorker.UpdatedItemsListener {
@@ -66,9 +71,13 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
     
     private ImageView detailThumbnail;
     
+    private TextView detailTitle;
+    
     private TextView detailId;
     
-    private TextView detailTags;
+    private TextView detailTagsTitle;
+    
+    private LinearLayout detailTags;
 
     private WebView itemWebView;
 
@@ -107,8 +116,10 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
         // views that display detail information about that item:
         detailThumbnail = (ImageView) findViewById(R.id.itemDetailThumbnail);
         detailThumbnail.setOnClickListener(this);
+        detailTitle = (TextView) findViewById(R.id.itemDetailTitle);
         detailId = (TextView) findViewById(R.id.itemDetailId);
-        detailTags = (TextView) findViewById(R.id.itemDetailTags);
+        detailTags = (LinearLayout) findViewById(R.id.itemDetailTags);
+        detailTagsTitle = (TextView) findViewById(R.id.itemDetailTagsTitle);
 
         // switches between the details and the webview that displays full-sized
         itemDetailViewSwitcher = 
@@ -239,13 +250,138 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
             });
         }
         
+        if (item.getTitle() != null) {
+            detailTitle.setText(item.getTitle());
+        }
+        else {
+            detailTitle.setVisibility(View.GONE);
+        }
+        
         // display the item id
-        detailId.setText("Item #" + String.valueOf(item.getId()));
+        detailId.setText("Id#" + String.valueOf(item.getId()));
         
         // display the item tags
-        detailTags.setText("Tagged: " + Utils.join(item.getTagNames(), ", "));
+        updateDetailTags(item.getTagNames());
+        
+
+        
+        // add tag button
+        Button addTagsButton = (Button) findViewById(R.id.itemDetailAddTags);
+        addTagsButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final EditText input = new EditText(ItemActivity.this);
+                new AlertDialog.Builder(ItemActivity.this)
+                .setMessage("Enter tags to add:")
+                .setView(input)
+
+                .setPositiveButton("OK",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog,
+                                int whichButton) {
+                            String tags = input.getText().toString();
+
+                            itemWorker.updateItemTags(item.getId(), tags, new UpdatedItemTagsListener() {
+                                @Override
+                                public void onUpdatedItemTags(final Item item) {
+                                    detailTags.post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            updateDetailTags(item.getTagNames());
+                                        }});
+                                }
+                                @Override
+                                public void onError(final String error) {
+                                    ItemActivity.this.runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            showErrorAlert(error);
+                                            
+                                        }});
+                                }});
+                        }
+                    }).setNegativeButton("Cancel", null).show();
+                
+                
+            }});
+       
+        
+        
+        
+
+
+        
+        
+        
     }
     
+    private void updateDetailTags(String[] tags) {
+        if (tags.length == 0) {
+            detailTagsTitle.setText("No Tags");
+            detailTags.setVisibility(View.GONE);
+        }
+        else {
+            detailTagsTitle.setText("Tagged:");
+            detailTags.setVisibility(View.VISIBLE);
+            
+            detailTags.removeAllViews();
+            for (final String name : tags) {
+                TextView tagItem = (TextView) getLayoutInflater().
+                        inflate(R.layout.tag_item, null);
+                tagItem.setText(name);
+                
+    
+                tagItem.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        // TODO Auto-generated method stub
+                        
+                    }});
+                tagItem.setOnLongClickListener(new OnLongClickListener() {
+                    @Override
+                    public boolean onLongClick(View v) {
+                        new AlertDialog.Builder(ItemActivity.this)
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setMessage("Sure to remove this tag?")
+                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                String delTag = new StringBuilder("-").append(name).toString();
+                                
+                                itemWorker.updateItemTags(item.getId(), delTag, new UpdatedItemTagsListener() {
+                                    @Override
+                                    public void onUpdatedItemTags(final Item item) {
+                                        detailTags.post(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                updateDetailTags(item.getTagNames());
+                                            }});
+                                    }
+                                    @Override
+                                    public void onError(final String error) {
+                                        ItemActivity.this.runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                showErrorAlert(error);
+                                                
+                                            }});
+                                    }});
+                                
+                                
+                            }
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+                        return false;
+                    }});
+                
+                detailTags.addView(tagItem);
+                
+            }
+        }
+        
+    }
+
     private void showWebView() {
         // remember the last display mode
         setShowItemDetails(false);
@@ -410,6 +546,23 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
         }
         
         return true;
+    }
+    
+
+    /**
+     * Show an alert dialog with a error message.
+     * 
+     * @param error message
+     */
+    public void showErrorAlert(String error) {
+        AlertDialog alertDialog = new AlertDialog.Builder(this).create();  
+        alertDialog.setTitle("Error");  
+        alertDialog.setMessage(error);
+        alertDialog.setButton("OK", new DialogInterface.OnClickListener() {  
+            public void onClick(DialogInterface dialog, int which) {  
+                return;  
+            } });   
+        alertDialog.show();
     }
 
 

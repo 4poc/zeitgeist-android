@@ -65,7 +65,7 @@ public class GalleryService extends Service {
     
     @Override
     public void onCreate() {
-        Log.d(TAG, "onCreate");
+        Log.d(TAG, "onCreate()");
 
         // Instantiate them once:
         itemWorker = new ItemWorker(this);
@@ -74,12 +74,13 @@ public class GalleryService extends Service {
     
     @Override
     public IBinder onBind(Intent intent) {
+        Log.d(TAG, "onBind()");
         return binder;
     }
 
     @Override
     public void onDestroy() {
-        Log.d(TAG, "onDestroy");
+        Log.d(TAG, "onDestroy()");
 
         // stop worker threads
         itemWorker.stopThread();
