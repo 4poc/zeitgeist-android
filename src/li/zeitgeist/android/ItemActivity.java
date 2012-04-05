@@ -334,8 +334,10 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
                 tagItem.setOnClickListener(new OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        // TODO Auto-generated method stub
-                        
+                        // switch to the gallery, but update the positionCache
+                        // to only show items with that specific tag
+                        itemWorker.setShowTag(name);
+                        startActivity(new Intent(ItemActivity.this, GalleryActivity.class));
                     }});
                 tagItem.setOnLongClickListener(new OnLongClickListener() {
                     @Override

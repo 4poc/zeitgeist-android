@@ -98,6 +98,16 @@ public class ItemWorker extends Thread {
     private SortedMap<Integer, Item> itemCache;
     
     /**
+     * Locked Item Query, last query returned 0 items.
+     * 
+     * This is useful to determine that it makes no sense
+     * to automatically query the same thing again.
+     * Needs to be reset if the properties change, and
+     * should be ignored for queries newer items.
+     */
+    private boolean lockedQuery;
+    
+    /**
      * File on the sdcard storing the serialized itemCache.
      */
     private File itemDiskCache;
@@ -117,6 +127,11 @@ public class ItemWorker extends Thread {
      * from the positionCache.
      */
     private boolean hideImages = false;
+    
+    /**
+     * Only show items with this tag.
+     */
+    private String showTagName = null;
     
     /**
      * The handler for this thread, used to queue the item downloading on.
@@ -339,14 +354,33 @@ public class ItemWorker extends Thread {
 
                 try {
                     List<Item> newItemsList;
-                    if (after > -1) {
-                    	newItemsList = api.listAfter(after);
-                    }
-                    else if (before > -1) {
-                    	newItemsList = api.listBefore(before);
+                    if (showTagName != null) {
+                        if (after > -1) {
+                            newItemsList = api.listByTagAfter(showTagName, after);
+                        }
+                        else if (before > -1) {
+                            newItemsList = api.listByTagBefore(showTagName, before);
+                        }
+                        else {
+                            newItemsList = api.listByTag(showTagName);
+                        }
                     }
                     else {
-                    	newItemsList = api.list();
+                        if (after > -1) { 
+                            newItemsList = api.listAfter(after);
+                        }
+                        else if (before > -1) {
+                            newItemsList = api.listBefore(before);
+                        }
+                        else {
+                            newItemsList = api.list();
+                        }
+                    }
+                    
+                    // remember that the last query returned 0 results,
+                    // so we don't automatically query the same thing again.
+                    if (newItemsList.size() == 0) {
+                        lockedQuery = true;
                     }
 
                     // map the list to an hash with ID as key:
@@ -408,9 +442,8 @@ public class ItemWorker extends Thread {
      * 
      * The position cache is used by the gridview adapter for
      * position(list index) -> item ID mapping. Thats also the
-     * place where images or videos are ignored and in the future
-     * it should also be possible to tell the itemProvider only
-     * to show items with specific tags or other things.
+     * place where images or videos are ignored and filtered
+     * for the selected tag.
      */
     private void createPositionCache() {
         List<Integer> newPositionCache = new Vector<Integer>();
@@ -426,10 +459,17 @@ public class ItemWorker extends Thread {
                  (type == Type.IMAGE && hideImages) ) {
                 continue;
             }
+            
+            // filtering by tag
+            if (showTagName != null &&
+                !item.hasTag(showTagName)) {
+                continue;
+            }
 
             newPositionCache.add(item.getId());
         }
         Collections.reverse(newPositionCache);
+        Log.v(TAG, "new position cache has entries: " + String.valueOf(newPositionCache.size()));
         positionCache = newPositionCache;
     }
     
@@ -504,6 +544,32 @@ public class ItemWorker extends Thread {
     public boolean isHiddenVideos() {
         return hideVideos;
     }
+    
+    /**
+     * Set a tag to show by name.
+     * 
+     * This sets the tag filter, it only shows items that
+     * are associated with that tag, this could require a
+     * requery of items.
+     * The query method will only look for items with that
+     * tag.
+     * 
+     * @param name
+     */
+    public void setShowTag(String name) {
+        this.showTagName = name;
+        
+        // re-create the postition cache only with items of that tag
+        createPositionCache();
+        
+        if (positionCache.size() == 0) {
+            // look for items (this will only query items with the tag)
+            queryFirstItems();
+        }
+        
+        // allow for queries again
+        resetLockedQuery();
+    }
 
     @Override
     public void run() {
@@ -553,6 +619,21 @@ public class ItemWorker extends Thread {
         else {
             return itemId;
         }
+    }
+    
+    /**
+     * Empty query returned last.
+     * @return if the last query yielded 0 results.
+     */
+    public boolean isLockedQuery() {
+        return lockedQuery;
+    }
+    
+    /**
+     * Reset (set to false) the query lock.
+     */
+    public void resetLockedQuery() {
+        lockedQuery = false;
     }
 
 }

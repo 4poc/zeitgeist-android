@@ -133,7 +133,8 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
         galleryActivity.showItemViewProgressBar(view);
         
         // last item also triggers the loading of older items
-        if (itemWorker.getItemCount() == position+1) {
+        if (itemWorker.getItemCount() == position+1 &&
+                !itemWorker.isLockedQuery()) {
             itemWorker.queryOlderItems();
             galleryActivity.showGalleryBarProgressIcon();
             //return view;
