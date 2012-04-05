@@ -557,6 +557,7 @@ public class ItemWorker extends Thread {
      * @param name
      */
     public void setShowTag(String name) {
+        Log.v(TAG, "set tag filtering for " + name);
         this.showTagName = name;
         
         // re-create the postition cache only with items of that tag
@@ -569,6 +570,9 @@ public class ItemWorker extends Thread {
         
         // allow for queries again
         resetLockedQuery();
+        
+        // inform the listeners about it (triggers UI change)
+        callUpdatedItems(null);
     }
 
     @Override

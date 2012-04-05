@@ -337,6 +337,7 @@ public class GalleryActivity extends Activity
         // handle clicks in the options menu within the activity:
         menu.findItem(R.id.galleryMenuSettingsItem).setOnMenuItemClickListener(this);
         menu.findItem(R.id.galleryMenuRefreshItem).setOnMenuItemClickListener(this);
+        menu.findItem(R.id.galleryMenuResetFilters).setOnMenuItemClickListener(this);
         
         return true;
     }
@@ -516,6 +517,12 @@ public class GalleryActivity extends Activity
         case R.id.galleryMenuRefreshItem:
             showGalleryBarProgressIcon();
             itemWorker.queryNewerItems();
+            break;
+
+        // clear filtering for tags etc.
+        case R.id.galleryMenuResetFilters:
+            itemWorker.setShowTag(null);
+
             break;
 
         }

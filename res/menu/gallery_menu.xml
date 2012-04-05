@@ -12,5 +12,11 @@
         android:icon="@drawable/ic_menu_refresh" 
         android:title="Refresh"
         />
+    
+    <item 
+        android:id="@+id/galleryMenuResetFilters"
+        android:icon="@drawable/ic_menu_close_clear_cancel" 
+        android:title="Reset Filters"
+        />
 
 </menu>
