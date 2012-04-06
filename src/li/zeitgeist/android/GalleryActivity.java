@@ -193,6 +193,8 @@ public class GalleryActivity extends Activity
                 
         // gallery bar (icon header bar) assigns onclick listener
         galleryBarOnClickListener = new GalleryBarOnClickListener();
+        ((ImageView) findViewById(R.id.galleryBarLogo))
+        	.setOnClickListener(galleryBarOnClickListener);
         ((ImageView) findViewById(R.id.galleryBarShowImagesIcon))
             .setOnClickListener(galleryBarOnClickListener);
         ((ImageView) findViewById(R.id.galleryBarShowVideosIcon))
@@ -612,6 +614,9 @@ public class GalleryActivity extends Activity
             ImageView imageView = (ImageView) v;
             
             switch (imageView.getId()) {
+            case R.id.galleryBarLogo:
+            	itemWorker.setShowTag(null); // reset filters
+            	break;            	
             case R.id.galleryBarShowImagesIcon:
                 if (itemWorker.isHiddenImages()) { // are images hidden?
                     // show images...
