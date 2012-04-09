@@ -277,56 +277,43 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
        
         detailAddTagText.addTextChangedListener(new TagAutoCompleteTextWatcher(detailAddTagText, autocompleteAdapter, itemWorker));
         detailAddTagText.setAdapter(autocompleteAdapter);
-        //
-        Log.v(TAG, "foo");
-        
-        //autoCompleteTextView.setOnItemClickListener(new MyAutoCompleteItemClickListener());
+        detailAddTagText.setOnItemClickListener(new OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> arg0, View itemView, int arg2,
+                    long arg3) {
+                TextView tagName = 
+                        (TextView) itemView.findViewById(R.id.tagAutocompleteTagName);
+                
+                detailAddTagText.setText(tagName.getText());
+                
+            }});
         
         // add tag button
         Button addTagsButton = (Button) findViewById(R.id.itemDetailAddTags);
         addTagsButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                final AutoCompleteTextView input = new AutoCompleteTextView(ItemActivity.this);
                 
-                //TagAutoCompleteAdapter adapter = new TagAutoCompleteAdapter(this, itemWorker);
-                //input.setAdapter(adapter);
-                //input.addTextChangedListener(adapter);
-                
-                //ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
-                //        android.R.layout.simple_dropdown_item_1line, itemWorker.getAllTags());
-                
-                //input.setAdapter(adapter);
-                new AlertDialog.Builder(ItemActivity.this)
-                .setMessage("Enter tags to add:")
-                .setView(input)
-
-                .setPositiveButton("OK",
-                    new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog,
-                                int whichButton) {
-                            String tags = input.getText().toString();
-
-                            itemWorker.updateItemTags(item.getId(), tags, new UpdatedItemTagsListener() {
-                                @Override
-                                public void onUpdatedItemTags(final Item item) {
-                                    detailTags.post(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            updateDetailTags(item.getTagNames());
-                                        }});
-                                }
-                                @Override
-                                public void onError(final String error) {
-                                    ItemActivity.this.runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            showErrorAlert(error);
-                                            
-                                        }});
-                                }});
-                        }
-                    }).setNegativeButton("Cancel", null).show();
+                String tags = detailAddTagText.getText().toString();
+                detailAddTagText.setText("");
+                itemWorker.updateItemTags(item.getId(), tags, new UpdatedItemTagsListener() {
+                    @Override
+                    public void onUpdatedItemTags(final Item item) {
+                        detailTags.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                updateDetailTags(item.getTagNames());
+                            }});
+                    }
+                    @Override
+                    public void onError(final String error) {
+                        ItemActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                showErrorAlert(error);
+                                
+                            }});
+                    }});
                 
                 
             }});

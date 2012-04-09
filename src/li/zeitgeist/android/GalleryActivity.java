@@ -553,59 +553,29 @@ public class GalleryActivity extends Activity
      * OnClickListener for the header bar icons.
      * 
      * Handle the icons shown always on top of the gallery, to
-     * filter for videos and images.
+     * filter for videos and images. Switches the image bitmaps
+     * to indicate active filters.
      */
     private class GalleryBarOnClickListener implements OnClickListener {
-        /**
-         * Used as a background color to indicate the active element.
-         */
-        private int active_color;
         
         /**
-         * Constructs a new listener, use a resource as the active bg color.
-         */
-        public GalleryBarOnClickListener() {
-            active_color = getResources().getColor(R.color.gallery_bar_active);
-        }
-        
-        /**
-         * Update the icon's background color to indicate if there active.
-         * 
-         * This updates the state of the icons based on the current
-         * filter setting of the item worker. Note that the itemWorker
-         * loads everything and only later applies the filtering for
-         * videos and images that is controled here. 
+         * Switches icon bitmaps to indicate active/inactive filters.
          */
         public void updateShowIcons() {
-            View showImagesView = findViewById(R.id.galleryBarShowImagesIcon);
+            ImageView showImagesIcon = (ImageView) findViewById(R.id.galleryBarShowImagesIcon);
             if (itemWorker.isHiddenImages()) {
-                setViewBackground(showImagesView, false);
+                showImagesIcon.setImageResource(R.drawable.bar_image_inactive);
             }
             else {
-                setViewBackground(showImagesView, true);
+                showImagesIcon.setImageResource(R.drawable.bar_image);
             }
-
-            View showVideosView = findViewById(R.id.galleryBarShowVideosIcon);
+            
+            ImageView showVideosIcon = (ImageView) findViewById(R.id.galleryBarShowVideosIcon);
             if (itemWorker.isHiddenVideos()) {
-                setViewBackground(showVideosView, false);
+                showVideosIcon.setImageResource(R.drawable.bar_video_inactive);
             }
             else {
-                setViewBackground(showVideosView, true);
-            }
-        }
-        
-        /**
-         * Sets the background color to indicate that its active (if param is set).
-         * 
-         * @param view should be a imageview
-         * @param active if true use the active color, transparent otherwise.
-         */
-        private void setViewBackground(View view, boolean active) {
-            if (active) {
-                view.setBackgroundColor(active_color);
-            }
-            else {
-                view.setBackgroundColor(Color.TRANSPARENT);
+                showVideosIcon.setImageResource(R.drawable.bar_video);
             }
         }
         
@@ -621,24 +591,20 @@ public class GalleryActivity extends Activity
                 if (itemWorker.isHiddenImages()) { // are images hidden?
                     // show images...
                     itemWorker.setHideImages(false);
-                    
-                    // active background:
-                    setViewBackground(imageView, true);
                 }
                 else {
                     itemWorker.setHideImages(true);
-                    setViewBackground(imageView, false);
                 }
+                updateShowIcons();
                 break;
             case R.id.galleryBarShowVideosIcon:
                 if (itemWorker.isHiddenVideos()) {
                     itemWorker.setHideVideos(false);
-                    setViewBackground(imageView, true);
                 }
                 else {
                     itemWorker.setHideVideos(true);
-                    setViewBackground(imageView, false);
                 }
+                updateShowIcons();
                 break;
             case R.id.galleryBarPreferencesIcon:
                 Intent settingsActivity = new Intent(getBaseContext(), 

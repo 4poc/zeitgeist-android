@@ -5,6 +5,5 @@
     <color name="item_webview_background">#000000</color>
     
     <color name="gallery_bar_background">#2b2d2e</color>
-    <color name="gallery_bar_active">#393939</color>
     
 </resources>

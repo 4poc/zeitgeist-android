@@ -42,6 +42,7 @@ public class TagAutoCompleteTextWatcher implements TextWatcher {
          // Fill Adapter with new data
         
         final String query = s.toString();
+        if (query.contains(",")) return;
         itemWorker.searchItemTags(query, new ItemTagSearchListener() {
 
             @Override
