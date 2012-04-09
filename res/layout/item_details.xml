@@ -54,6 +54,13 @@
             android:layout_height="wrap_content"
             android:layout_gravity="left"
             android:orientation="vertical" />
+        
+        <AutoCompleteTextView
+            android:id="@+id/itemDetailAddTagText"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:completionThreshold="3"
+            android:inputType="textImeMultiLine" />
 
         <Button
             android:id="@+id/itemDetailAddTags"

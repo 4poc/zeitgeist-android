@@ -80,6 +80,11 @@ public class ItemWorker extends Thread {
         public void onUpdatedItemTags(final Item item);
         public void onError(final String error);
     }
+    
+    public interface ItemTagSearchListener {
+        public void onItemTagSearchResult(final List<Tag> tags);
+        public void onError(final String error);
+    }
 
     /**
      * List of updated items listener to inform.
@@ -325,6 +330,26 @@ public class ItemWorker extends Thread {
                     }
                     
                     listener.onUpdatedItemTags(item);
+                } catch (ZeitgeistError e) {
+                    Log.e(TAG, "Zeitgeist Error: " + e.getError());
+                    listener.onError(e.getError());
+                }
+            }});
+    }
+    
+    public void searchItemTags(final String query, final ItemTagSearchListener listener) {
+        
+        if (!isAlive() || handler == null) {
+            return;
+        }
+        
+        Log.v(TAG, String.format("searchItemTags: %s", query));
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    List<Tag> tags = api.searchTags(query);
+                    listener.onItemTagSearchResult(tags);
                 } catch (ZeitgeistError e) {
                     Log.e(TAG, "Zeitgeist Error: " + e.getError());
                     listener.onError(e.getError());

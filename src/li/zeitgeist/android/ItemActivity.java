@@ -23,6 +23,7 @@ import li.zeitgeist.android.worker.*;
 import li.zeitgeist.android.worker.ItemWorker.UpdatedItemTagsListener;
 import li.zeitgeist.api.Item;
 import li.zeitgeist.api.Item.Type;
+import li.zeitgeist.api.Tag;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -78,6 +79,8 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
     private TextView detailTagsTitle;
     
     private LinearLayout detailTags;
+    
+    private AutoCompleteTextView detailAddTagText;
 
     private WebView itemWebView;
 
@@ -120,6 +123,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
         detailId = (TextView) findViewById(R.id.itemDetailId);
         detailTags = (LinearLayout) findViewById(R.id.itemDetailTags);
         detailTagsTitle = (TextView) findViewById(R.id.itemDetailTagsTitle);
+        detailAddTagText = (AutoCompleteTextView) findViewById(R.id.itemDetailAddTagText);
 
         // switches between the details and the webview that displays full-sized
         itemDetailViewSwitcher = 
@@ -263,14 +267,36 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
         // display the item tags
         updateDetailTags(item.getTagNames());
         
-
+        // add new tags autocomplete text input
+        
+        
+        final TagAutoCompleteAdapter autocompleteAdapter = 
+                new TagAutoCompleteAdapter(this, 
+                        R.layout.tag_autocomplete_item);
+        autocompleteAdapter.setNotifyOnChange(true);
+       
+        detailAddTagText.addTextChangedListener(new TagAutoCompleteTextWatcher(detailAddTagText, autocompleteAdapter, itemWorker));
+        detailAddTagText.setAdapter(autocompleteAdapter);
+        //
+        Log.v(TAG, "foo");
+        
+        //autoCompleteTextView.setOnItemClickListener(new MyAutoCompleteItemClickListener());
         
         // add tag button
         Button addTagsButton = (Button) findViewById(R.id.itemDetailAddTags);
         addTagsButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                final EditText input = new EditText(ItemActivity.this);
+                final AutoCompleteTextView input = new AutoCompleteTextView(ItemActivity.this);
+                
+                //TagAutoCompleteAdapter adapter = new TagAutoCompleteAdapter(this, itemWorker);
+                //input.setAdapter(adapter);
+                //input.addTextChangedListener(adapter);
+                
+                //ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+                //        android.R.layout.simple_dropdown_item_1line, itemWorker.getAllTags());
+                
+                //input.setAdapter(adapter);
                 new AlertDialog.Builder(ItemActivity.this)
                 .setMessage("Enter tags to add:")
                 .setView(input)
