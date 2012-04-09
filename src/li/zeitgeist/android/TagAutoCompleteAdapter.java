@@ -30,6 +30,8 @@ public class TagAutoCompleteAdapter extends ArrayAdapter<Tag> implements Filtera
     
     private Handler handler;
     
+    private LayoutInflater inflater;
+    
     public TagAutoCompleteAdapter(Context context, int textViewResourceId) {
         super(context, textViewResourceId);
         this.layoutResourceId = textViewResourceId;
@@ -37,6 +39,8 @@ public class TagAutoCompleteAdapter extends ArrayAdapter<Tag> implements Filtera
         tags = new Vector<Tag>();
         
         handler = new Handler();
+        
+        inflater = LayoutInflater.from(context);
     }
     
     private Filter filter = new Filter() {
@@ -49,6 +53,11 @@ public class TagAutoCompleteAdapter extends ArrayAdapter<Tag> implements Filtera
                 Log.v(TAG, "performFiltering: " + constraint.toString());
                 
                 // filter adapter datastructure
+                /*for (Tag tag : tags) {
+                    if (!tag.getName().contains(constraint)) {
+                        tags.remove(tag);
+                    }
+                }*/
                 
                 filterResults.count = getCount();
             }
@@ -69,25 +78,32 @@ public class TagAutoCompleteAdapter extends ArrayAdapter<Tag> implements Filtera
     public Filter getFilter() {
         return filter;
     }
+    
+    static class ViewHolder {
+        TextView tagName;
+        TextView tagCount;
+    }
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
+        ViewHolder holder;
         if(convertView == null) {
-            LayoutInflater inflater = LayoutInflater.from(getContext());
             convertView = inflater.inflate(layoutResourceId, parent, false);
+            
+            holder = new ViewHolder();
+            holder.tagName = (TextView) convertView.findViewById(R.id.tagAutocompleteTagName);
+            holder.tagCount = (TextView) convertView.findViewById(R.id.tagAutocompleteTagCount);
+            convertView.setTag(holder);
         }
- 
-        // TODO: holder pattern!!
-        TextView tagName = 
-                (TextView) convertView.findViewById(R.id.tagAutocompleteTagName);
-        TextView tagCount = 
-                (TextView) convertView.findViewById(R.id.tagAutocompleteTagCount);
+        else {
+            holder = (ViewHolder) convertView.getTag();
+        }
         
         Tag tag = getItem(position);
         
         if (tag != null) {
-            tagName.setText(tag.getName());
-            tagCount.setText(String.valueOf(tag.getCount()));
+            holder.tagName.setText(tag.getName());
+            holder.tagCount.setText(String.valueOf(tag.getCount()));
         }
         
         return convertView;
