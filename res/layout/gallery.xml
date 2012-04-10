@@ -30,6 +30,13 @@
             android:layout_height="fill_parent"
             android:layout_gravity="right"
             android:gravity="right" >
+
+            <ImageView
+                android:id="@+id/galleryBarCameraIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/bar_camera"
+                android:visibility="gone" />
             
 			<ImageView
                 android:id="@+id/galleryBarRefreshIcon"

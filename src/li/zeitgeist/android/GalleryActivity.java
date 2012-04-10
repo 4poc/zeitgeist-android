@@ -17,6 +17,12 @@
  */
 package li.zeitgeist.android;
 
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
 import android.app.AlertDialog;
 
 import android.content.DialogInterface;
@@ -25,12 +31,16 @@ import android.util.*;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.*;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
+import android.provider.MediaStore;
 
 import android.view.*;
 import android.view.MenuItem.OnMenuItemClickListener;
@@ -152,6 +162,17 @@ public class GalleryActivity extends Activity
      * and allows to filter for videos/images.
      */
     GalleryBarOnClickListener galleryBarOnClickListener;
+    
+    /**
+     * Request Code used to identify picture taken response.
+     */
+    private static final int REQUEST_CODE_PICTURE_TAKEN = 1;
+    
+    /**
+     * Temporary Image written by the camera application. 
+     */
+    private File takePictureTemp;
+    
 
     /**
      * Constructs the main activity.
@@ -161,6 +182,21 @@ public class GalleryActivity extends Activity
         Log.v(TAG, "constructed");
     }
     
+    /**
+     * Checks if the phone has a camera and a application for it.
+     * @return
+     */
+    public boolean isCameraAvailable() {
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
+            return false;
+        }
+        final PackageManager packageManager = getPackageManager();
+        final Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        List<ResolveInfo> list =
+                packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+        return list.size() > 0;
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -206,6 +242,13 @@ public class GalleryActivity extends Activity
         
         galleryBarProgressIcon = 
                 (ProgressBar) findViewById(R.id.galleryBarProgressIcon);
+        
+        // show the camera icon if the device has one
+        ImageView galleryBarCameraIcon = (ImageView) findViewById(R.id.galleryBarCameraIcon);
+        if (isCameraAvailable()) {
+            galleryBarCameraIcon.setVisibility(View.VISIBLE);
+            galleryBarCameraIcon.setOnClickListener(galleryBarOnClickListener);
+        }
     }
     
     @Override
@@ -524,11 +567,20 @@ public class GalleryActivity extends Activity
         // clear filtering for tags etc.
         case R.id.galleryMenuResetFilters:
             itemWorker.setShowTag(null);
-
             break;
-
         }
         return true;
+    }
+    
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.v(TAG, String.format("onActivityResult(%d, %d, ?)", requestCode, resultCode));
+        if (requestCode == REQUEST_CODE_PICTURE_TAKEN &&
+                resultCode == RESULT_OK) {
+            Intent createItemActivity = new Intent(getBaseContext(), 
+                    CreateItemActivity.class);
+            createItemActivity.putExtra("local_image", takePictureTemp);
+            startActivity(createItemActivity);
+        }
     }
     
     /**
@@ -615,7 +667,22 @@ public class GalleryActivity extends Activity
                 showGalleryBarProgressIcon();
                 itemWorker.queryNewerItems();
                 break;
+            case R.id.galleryBarCameraIcon:
+                Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                try {
+                    takePictureTemp = File.createTempFile("zg_tmp_" +
+                            new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()), ".jpg");
+                    Log.v(TAG, "Take picture, write image: " + takePictureTemp.getAbsolutePath());
+
+                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(takePictureTemp));
+                    startActivityForResult(takePictureIntent, REQUEST_CODE_PICTURE_TAKEN);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                break;
             }
         }
     }
+    
 }
