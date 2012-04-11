@@ -77,6 +77,7 @@ public class CreateItemActivity extends Activity implements OnClickListener {
     private boolean isBoundService;
 
     private ImageView thumbnailView;
+    private TextView localFilenameView;
     private TextView remoteUrlTitleView;
     private EditText remoteUrlView;
     private AutoCompleteTextView tagsView;
@@ -87,6 +88,9 @@ public class CreateItemActivity extends Activity implements OnClickListener {
     private File localImage;
     
     private Bitmap localImageThumbnail;
+
+
+;
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -103,6 +107,7 @@ public class CreateItemActivity extends Activity implements OnClickListener {
         doBindService();
         
         thumbnailView = (ImageView) findViewById(R.id.createItemThumbnail);
+        localFilenameView = (TextView) findViewById(R.id.createItemLocalFilename);
         remoteUrlTitleView = (TextView) findViewById(R.id.createItemRemoteUrlTitle);
         remoteUrlView = (EditText) findViewById(R.id.createItemRemoteUrl);
         tagsView = (AutoCompleteTextView) findViewById(R.id.createItemTags);
@@ -221,6 +226,8 @@ public class CreateItemActivity extends Activity implements OnClickListener {
             localImageThumbnail = createThumbnailBitmap(localImage);
         }
         thumbnailView.setImageBitmap(localImageThumbnail);
+        localFilenameView.setVisibility(View.VISIBLE);
+        localFilenameView.setText(localImage.getName());
     }
 
     private Bitmap createThumbnailBitmap(File f){

@@ -20,6 +20,14 @@
 	        android:layout_width="match_parent"
 	        android:layout_height="wrap_content"
 	        android:src="@drawable/question_mark" />
+
+	    <TextView
+	        android:id="@+id/createItemLocalFilename"
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:visibility="gone"
+	        android:gravity="center"
+	        android:textAppearance="?android:attr/textAppearanceSmall" />
 	
 	    <TextView
 	        android:id="@+id/createItemRemoteUrlTitle"
