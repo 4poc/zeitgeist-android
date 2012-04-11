@@ -167,12 +167,6 @@ public class GalleryActivity extends Activity
      * Request Code used to identify picture taken response.
      */
     private static final int REQUEST_CODE_PICTURE_TAKEN = 1;
-    
-    /**
-     * Temporary Image written by the camera application. 
-     */
-    private File takePictureTemp;
-    
 
     /**
      * Constructs the main activity.
@@ -249,6 +243,8 @@ public class GalleryActivity extends Activity
             galleryBarCameraIcon.setVisibility(View.VISIBLE);
             galleryBarCameraIcon.setOnClickListener(galleryBarOnClickListener);
         }
+        
+        
     }
     
     @Override
@@ -578,9 +574,13 @@ public class GalleryActivity extends Activity
                 resultCode == RESULT_OK) {
             Intent createItemActivity = new Intent(getBaseContext(), 
                     CreateItemActivity.class);
-            createItemActivity.putExtra("local_image", takePictureTemp);
+            createItemActivity.putExtra("local_image", getTempImageFile());
             startActivity(createItemActivity);
         }
+    }
+    
+    private File getTempImageFile() {
+        return new File(Environment.getExternalStorageDirectory(), "zg_temp.jpg");
     }
     
     /**
@@ -669,16 +669,9 @@ public class GalleryActivity extends Activity
                 break;
             case R.id.galleryBarCameraIcon:
                 Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                try {
-                    takePictureTemp = File.createTempFile("zg_tmp_" +
-                            new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()), ".jpg");
-                    Log.v(TAG, "Take picture, write image: " + takePictureTemp.getAbsolutePath());
-
-                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(takePictureTemp));
-                    startActivityForResult(takePictureIntent, REQUEST_CODE_PICTURE_TAKEN);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                Log.v(TAG, "Request to take picture");
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(getTempImageFile()));
+                startActivityForResult(takePictureIntent, REQUEST_CODE_PICTURE_TAKEN);
 
                 break;
             }

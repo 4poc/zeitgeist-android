@@ -12,7 +12,7 @@
 	    <TextView
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
-	        android:text="Share Item"
+	        android:text="Share Item at Zeitgeist"
 	        android:textAppearance="?android:attr/textAppearanceLarge" />
 	
 	    <ImageView
@@ -22,13 +22,13 @@
 	        android:src="@drawable/question_mark" />
 	
 	    <TextView
-	        android:id="@+id/createItemSourceUrlTitle"
+	        android:id="@+id/createItemRemoteUrlTitle"
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
-	        android:text="Source URL:" />
+	        android:text="Remote URL:" />
 	
 	    <EditText
-	        android:id="@+id/createItemSourceUrl"
+	        android:id="@+id/createItemRemoteUrl"
 	        android:layout_width="match_parent"
 	        android:layout_height="wrap_content"
 	        android:ems="10" />

@@ -20,6 +20,7 @@ package li.zeitgeist.android;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
@@ -32,14 +33,19 @@ import li.zeitgeist.api.error.ZeitgeistError;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.provider.MediaStore;
+import android.provider.MediaStore.Images;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -71,14 +77,16 @@ public class CreateItemActivity extends Activity implements OnClickListener {
     private boolean isBoundService;
 
     private ImageView thumbnailView;
-    private TextView sourceUrlTitleView;
-    private EditText sourceUrlView;
+    private TextView remoteUrlTitleView;
+    private EditText remoteUrlView;
     private AutoCompleteTextView tagsView;
     private CheckBox announceView;
     private Button cancelView;
     private Button shareView;
     
     private File localImage;
+    
+    private Bitmap localImageThumbnail;
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -95,8 +103,8 @@ public class CreateItemActivity extends Activity implements OnClickListener {
         doBindService();
         
         thumbnailView = (ImageView) findViewById(R.id.createItemThumbnail);
-        sourceUrlTitleView = (TextView) findViewById(R.id.createItemSourceUrlTitle);
-        sourceUrlView = (EditText) findViewById(R.id.createItemSourceUrl);
+        remoteUrlTitleView = (TextView) findViewById(R.id.createItemRemoteUrlTitle);
+        remoteUrlView = (EditText) findViewById(R.id.createItemRemoteUrl);
         tagsView = (AutoCompleteTextView) findViewById(R.id.createItemTags);
         announceView = (CheckBox) findViewById(R.id.createItemAnnounce);
         cancelView = (Button) findViewById(R.id.createItemCancel);
@@ -104,6 +112,32 @@ public class CreateItemActivity extends Activity implements OnClickListener {
         
         cancelView.setOnClickListener(this);
         shareView.setOnClickListener(this);
+        
+        // if the activity was started with intent extras:
+        Bundle bundle = getIntent().getExtras();
+     // app requested photo (from gallery)
+        if (bundle.containsKey("local_image") && 
+                bundle.get("local_image") != null) {
+            localImage = (File) bundle.get("local_image");
+            showLocalImage();
+        }
+        else if (getIntent().getAction().equals(Intent.ACTION_SEND) &&
+                bundle.containsKey(Intent.EXTRA_STREAM)) {
+            Uri mediaUri = (Uri) bundle.getParcelable(Intent.EXTRA_STREAM);
+            String scheme = mediaUri.getScheme();
+            if (scheme.equals("content")) {
+                ContentResolver contentResolver = getContentResolver();
+                Cursor cursor = contentResolver.query(mediaUri, null, null, null, null);
+                cursor.moveToFirst();
+                localImage = new File(cursor.getString(cursor.getColumnIndexOrThrow(Images.Media.DATA)));
+                
+                showLocalImage();
+            }
+        }
+        else {
+            Log.v(TAG, "started without intent extras");
+        }
+
     }
 
     @Override
@@ -170,34 +204,24 @@ public class CreateItemActivity extends Activity implements OnClickListener {
                     tagsView.setText(tagName.getText());
                     
                 }});
-            
-
-            // Get the item object this activity is about:
-            Bundle bundle = getIntent().getExtras();
-            
-            localImage = (File) bundle.get("local_image");
-            if (localImage != null) {
-                // no source url: (and no filename)
-                sourceUrlTitleView.setVisibility(View.GONE);
-                sourceUrlView.setVisibility(View.GONE);
-                
-                // load thumbnail:
-                Bitmap localImageThumbnail = createThumbnailBitmap(localImage);
-                thumbnailView.setImageBitmap(localImageThumbnail);
-                
-                //localImage.delete();
-            }
-            
-            // ...
-            
-            
-            
-            
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {}
     };
+    
+    private void showLocalImage() {
+        // no remote uploading
+        remoteUrlTitleView.setVisibility(View.GONE);
+        remoteUrlView.setVisibility(View.GONE);
+        
+        // load thumbnail:
+        if (localImageThumbnail == null) {
+            Log.v(TAG, "load localImageThumbnail. localImage: " + localImage.getAbsolutePath());
+            localImageThumbnail = createThumbnailBitmap(localImage);
+        }
+        thumbnailView.setImageBitmap(localImageThumbnail);
+    }
 
     private Bitmap createThumbnailBitmap(File f){
         try {
@@ -207,7 +231,7 @@ public class CreateItemActivity extends Activity implements OnClickListener {
             BitmapFactory.decodeStream(new FileInputStream(f),null,o);
 
             //The new size we want to scale to
-            final int REQUIRED_SIZE=200;
+            final int REQUIRED_SIZE=120;
 
             //Find the correct scale value. It should be the power of 2.
             int scale=1;
@@ -226,75 +250,74 @@ public class CreateItemActivity extends Activity implements OnClickListener {
     public void onClick(View v) {
         switch (v.getId()) {
         case R.id.createItemCancel:
-            
+            startActivity(new Intent(this, GalleryActivity.class));
             break;
         case R.id.createItemShare:
-            
-            ImageUploadTask task = new ImageUploadTask();
-            task.execute(localImage);
-            
-            //localImage.delete();
-            
-            
+            // upload/post the image
+            ImageUploadTask uploadTask = new ImageUploadTask();
+            uploadTask.execute(localImage);
             break;
         }
     }
     
-    private class ImageUploadTask extends AsyncTask<File, Integer, List<Item>> {
+    private class ImageUploadTask extends AsyncTask<File, Long, List<Item>> {
         
         private ProgressDialog dialog;
+        
+        private long totalBytes;
 
         @Override
         protected void onPostExecute(List<Item> result) {
-            // TODO Auto-generated method stub
-            super.onPostExecute(result);
-            //dialog.dismiss();
-            dialog.hide();
+            dialog.dismiss();
+            startActivity(new Intent(CreateItemActivity.this, GalleryActivity.class));
+            // TODO: show toast after returning to the gallery
+            // would just need to include an extra in the intent
         }
 
         @Override
         protected void onPreExecute() {
-            // TODO Auto-generated method stub
-            super.onPreExecute();
-            
             dialog = new ProgressDialog(CreateItemActivity.this);
             dialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-            dialog.setMessage("Uploading Picture...");
+            dialog.setMessage("Uploading Image...");
             dialog.setCancelable(false);
+            dialog.setMax(100);
             dialog.show();
         }
 
         @Override
-        protected void onProgressUpdate(Integer... values) {
-            super.onProgressUpdate(values);
-            dialog.setProgress((int) (values[0]));
+        protected void onProgressUpdate(Long... values) {
+            long transferred = values[0];
+            int percent = (int) ((transferred / (float) this.totalBytes) * 100);
+
+            dialog.setProgress(percent);
         }
 
         @Override
-        protected List<Item> doInBackground(File... params) {
-            File file = params[0];
-            // TODO Auto-generated method stub
-            
+        protected List<Item> doInBackground(File... files) {
+            File file = files[0];
+            this.totalBytes = file.length();
+            List<File> files_list = new ArrayList<File>();
+            files_list.add(file);
             
             ZeitgeistApi api = ZeitgeistApiFactory.createInstance(CreateItemActivity.this);
-            
-            List<File> files = new Vector<File>();
-            files.add(file);
-            final long totalSize = file.length();
-            
+            List<Item> result = null;
             try {
-                api.createByFiles(files, tagsView.getText().toString(), 
+                result = api.createByFiles(files_list, tagsView.getText().toString(), 
                         announceView.isChecked(), new ZeitgeistApi.OnProgressListener() {
                             @Override
                             public void onProgress(long transferred) {
-                                publishProgress((int) ((transferred / (float) totalSize) * 100));
+                                publishProgress(transferred);
                             }});
-            } catch (ZeitgeistError e) {
+            }
+            catch (ZeitgeistError e) {
                 e.printStackTrace();
-                dialog.hide();
+                dialog.dismiss();
+            }
+            finally {
+                localImage.delete();
             }
             
-            return null;
+            return result;
         }
         
     }
