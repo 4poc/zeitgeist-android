@@ -3,9 +3,17 @@
 ## //Introduction
 
 Zeitgeist is a collaborative user-submission-based media gallery for images,
-videos (YouTube, Vimeo, ...) and audio (Soundcloud, ...) content. Zeitgeist
-for Android uses the API to access and display content. It is currently
-under development, you can browse images but not much more.
+videos (YouTube, Vimeo, ...) and audio (Soundcloud, ...) content. With Zeitgeist
+for Android you can access any zeitgeist installation.
+
+## //Features
+
+* Endless scrolling through the gallery
+* View images directly and use the YouTube app to watch videos
+* Modify item taggings, including an autocompletion for tags
+* Share photos from your gallery or make a snapshot and upload it directly from the app
+* Authenticate with your zeitgeist account easily using a qrcode shown on the [/api_secret](http://zeitgeist.li/api_secret) page. (this uses the [zxing barcode scanner](http://code.google.com/p/zxing))
+* Delete your own photos from the gallery
 
 Development snapshots are available here: [apoc.cc](http://apoc.cc/zg-dev/)
 
