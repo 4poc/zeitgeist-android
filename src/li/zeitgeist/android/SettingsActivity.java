@@ -18,12 +18,72 @@
 package li.zeitgeist.android;
 
 import li.zeitgeist.android.preference.SeekBarPreference;
+import li.zeitgeist.api.ZeitgeistApi;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.Preference;
+import android.preference.PreferenceManager;
 import android.preference.Preference.OnPreferenceChangeListener;
+import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceActivity;
+import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
 
-public class SettingsActivity extends PreferenceActivity implements OnPreferenceChangeListener {
+import com.google.zxing.integration.android.*;
+
+public class SettingsActivity extends PreferenceActivity implements OnPreferenceChangeListener, OnPreferenceClickListener {
+    /**
+     * Standard android logging tag.
+     */
+    private static final String TAG = ZeitgeistApp.TAG + ":CreateItemActivity";
+    
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        IntentResult scanResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (scanResult != null) {
+            String qrcode = scanResult.getContents();
+            Log.v(TAG, "qrcode scan success: " + qrcode);
+            
+            // parse qrcode into url, email and secret:
+            int auth_token = qrcode.indexOf("#auth:");
+            if (auth_token != -1) {
+                String baseUrl = qrcode.substring(0, auth_token);
+                String eMail = qrcode.substring(auth_token + 6, qrcode.indexOf('|'));
+                String apiSecret = qrcode.substring(qrcode.indexOf('|') + 1);
+                
+                Log.v(TAG, "qrcode baseUrl: " + baseUrl);
+                Log.v(TAG, "qrcode eMail: " + eMail);
+                // Log.v(TAG, "qrcode apiSecret: " + apiSecret);
+                
+                ZeitgeistApi api = ZeitgeistApiFactory.createInstance(this);
+                if (api.testAuth(baseUrl, eMail, apiSecret)) {
+                    SharedPreferences prefs = 
+                            PreferenceManager.getDefaultSharedPreferences(this);
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putString("baseUrl", baseUrl);
+                    editor.putString("eMail", eMail);
+                    editor.putString("apiSecret", apiSecret);
+                    editor.commit();
+                    Log.v(TAG, "Successfully changed baseUrl, eMail and apiSecret!");
+                }
+                else {
+                    Log.e(TAG, "Scanned credentials are incorrect.");
+                }
+            }
+            else {
+                Log.e(TAG, "QR Code with invalid token scanned: " + qrcode);
+            }
+            
+            
+    
+    
+    
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,6 +97,10 @@ public class SettingsActivity extends PreferenceActivity implements OnPreference
         thumbnailPreference.setMax(200);
         
         thumbnailPreference.setOnPreferenceChangeListener(this);
+        
+        Preference scanForApiSecret = findPreference("scanForApiSecret");
+        scanForApiSecret.setOnPreferenceClickListener(this);
+        
     }
 
     @Override
@@ -46,6 +110,13 @@ public class SettingsActivity extends PreferenceActivity implements OnPreference
         if (preference.getKey().equals("thumbnailSize")) {
         }
         
+        return false;
+    }
+
+    @Override
+    public boolean onPreferenceClick(Preference arg0) {
+        IntentIntegrator integrator = new IntentIntegrator(this);
+        integrator.initiateScan();
         return false;
     }
 }

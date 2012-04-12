@@ -32,6 +32,12 @@
             android:defaultValue=""
             android:summary="Optional secret for authentication."
             />
+        
+        <Preference
+            android:key="scanForApiSecret"
+            android:title="Scan for API Secret"
+            android:summary="Scan QR Code to set URL, eMail and API Secret."
+             />
             
     </PreferenceCategory>
 
