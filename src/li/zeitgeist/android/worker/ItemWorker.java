@@ -380,6 +380,7 @@ public class ItemWorker extends Thread {
             public void run() {
                 try {
                     api.delete(id);
+                    itemCache.remove(id);
                     listener.onItemDelete(id);
                 } catch (ZeitgeistError e) {
                     Log.e(TAG, "Zeitgeist Error: " + e.getError());
