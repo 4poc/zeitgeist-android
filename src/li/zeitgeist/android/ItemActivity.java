@@ -20,6 +20,7 @@ package li.zeitgeist.android;
 import java.util.List;
 
 import li.zeitgeist.android.worker.*;
+import li.zeitgeist.android.worker.ItemWorker.ItemDeleteListener;
 import li.zeitgeist.android.worker.ItemWorker.UpdatedItemTagsListener;
 import li.zeitgeist.api.Item;
 import li.zeitgeist.api.Item.Type;
@@ -319,8 +320,43 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
             }});
        
         
+        // add delete button (if user is authenticated)
+        Button deleteButton = (Button) findViewById(R.id.itemDetailDelete);
+        SharedPreferences prefs = 
+                PreferenceManager.getDefaultSharedPreferences(this);
+        String apiSecret =  prefs.getString("apiSecret", null); 
+        if (apiSecret != null && !apiSecret.equals("")) {
+            deleteButton.setVisibility(View.VISIBLE); // make the button visible
+            deleteButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    new AlertDialog.Builder(ItemActivity.this)
+                    .setIcon(android.R.drawable.ic_dialog_alert)
+                    .setMessage("Sure to remove this item?")
+                    .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            itemWorker.deleteItem(item.getId(), new ItemDeleteListener() {
+                                @Override
+                                public void onItemDelete(int id) {
+                                    // back to gallery:
+                                    Log.v(TAG, "successfully deleted item with id " + String.valueOf(id));
+                                    startActivity(new Intent(ItemActivity.this, GalleryActivity.class));
+                                }
+
+                                @Override
+                                public void onError(String error) {
+                                    showErrorAlert(error);
+                                }});
+                            
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+                }});
+        }
         
-        
+                
 
 
         

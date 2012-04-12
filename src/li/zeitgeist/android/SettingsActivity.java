@@ -67,6 +67,7 @@ public class SettingsActivity extends PreferenceActivity implements OnPreference
                     editor.putString("eMail", eMail);
                     editor.putString("apiSecret", apiSecret);
                     editor.commit();
+                    // TODO: should do: itemWorker.resetApiInstance();
                     Log.v(TAG, "Successfully changed baseUrl, eMail and apiSecret!");
                 }
                 else {

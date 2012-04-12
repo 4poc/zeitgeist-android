@@ -75,6 +75,13 @@
 	            android:layout_weight="1"
 	            android:text="tag!" />
 	    </LinearLayout>
+ 
+        <Button
+            android:id="@+id/itemDetailDelete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:text="delete this item" />
 
     </LinearLayout>
 

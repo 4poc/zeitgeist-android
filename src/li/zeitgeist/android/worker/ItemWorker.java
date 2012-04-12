@@ -85,6 +85,11 @@ public class ItemWorker extends Thread {
         public void onItemTagSearchResult(final List<Tag> tags);
         public void onError(final String error);
     }
+    
+    public interface ItemDeleteListener {
+        public void onItemDelete(final int id);
+        public void onError(final String error);
+    }
 
     /**
      * List of updated items listener to inform.
@@ -152,6 +157,11 @@ public class ItemWorker extends Thread {
      * The Zeitgeist API instance.
      */
     private ZeitgeistApi api;
+    
+    /**
+     * The context this worker was created with.
+     */
+    private Context context;
 
     /**
      * Constructs and starts worker for downloading and create item instances.
@@ -159,6 +169,7 @@ public class ItemWorker extends Thread {
      */
     public ItemWorker(Context context) {
         api = ZeitgeistApiFactory.createInstance(context);
+        this.context = context;
         
         // initialize caches, in-memory only atm.
         itemCache = new TreeMap<Integer, Item>();
@@ -211,10 +222,11 @@ public class ItemWorker extends Thread {
         FileOutputStream fos;
         ObjectOutputStream os;
         try {
-            fos = new FileOutputStream(itemDiskCache);
-            os = new ObjectOutputStream(fos);
-            os.writeObject(itemCache);
-        
+            synchronized (itemCache) {
+                fos = new FileOutputStream(itemDiskCache);
+                os = new ObjectOutputStream(fos);
+                os.writeObject(itemCache);
+            }
         } catch (FileNotFoundException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -355,6 +367,26 @@ public class ItemWorker extends Thread {
                     listener.onError(e.getError());
                 }
             }});
+    }
+    
+    public void deleteItem(final int id, final ItemDeleteListener listener) {
+        if (!isAlive() || handler == null) {
+            return;
+        }
+        
+        Log.v(TAG, String.format("delete item with id #%d", id));
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    api.delete(id);
+                    listener.onItemDelete(id);
+                } catch (ZeitgeistError e) {
+                    Log.e(TAG, "Zeitgeist Error: " + e.getError());
+                    listener.onError(e.getError());
+                }
+            }});
+        
     }
 
     /**
@@ -663,6 +695,13 @@ public class ItemWorker extends Thread {
      */
     public void resetLockedQuery() {
         lockedQuery = false;
+    }
+    
+    /**
+     * Recreate the ZeitgeistApi instance.
+     */
+    public void resetApiInstance() {
+        api = ZeitgeistApiFactory.createInstance(context);
     }
 
 }
