@@ -440,9 +440,44 @@ public class ItemWorker extends Thread {
                         lockedQuery = true;
                     }
 
+                    
                     // map the list to an hash with ID as key:
                     for (Item item : newItemsList) {
                         itemCache.put(item.getId(), item);
+                    }
+
+                    // remove items that have since been deleted
+                    if (newItemsList.size() > 0) {
+                        int lastId = newItemsList.get(0).getId();
+                        int firstId = newItemsList.get(newItemsList.size()-1).getId();
+                        Log.v(TAG, String.format("firstId=%d lastId=%d", firstId, lastId));
+                        for (int id = firstId; id <= lastId; id++) {
+                            if (itemCache.containsKey(id)) {
+                                // search in the new items list for this id:
+                                boolean found = false;
+                                for (Item item : newItemsList) {
+                                    if (item.getId() == id) {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                if (!found) {
+                                    // remove from itemCache
+                                    Log.v(TAG, "item found that since been deleted: " + String.valueOf(id));
+                                    itemCache.remove(id);
+                                }
+                            }
+                        }
+                        // check for items outside of the boundaries that have
+                        // been deleted
+                        if (after == -1) { // there shouldn't be any items:
+                            for (int id = itemCache.lastKey(); id > lastId; id--) {
+                                if (itemCache.containsKey(id)) {
+                                    itemCache.remove(id);
+                                    Log.v(TAG, "item found outside boundaries, delete: " + String.valueOf(id));
+                                }
+                            }
+                        }
                     }
                     
                     Log.d(TAG, "put " + String.valueOf(itemCache.size()) + 
