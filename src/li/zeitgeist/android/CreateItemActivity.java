@@ -72,7 +72,7 @@ public class CreateItemActivity extends Activity implements OnClickListener {
      */
     private ItemWorker itemWorker;
     
-    private GalleryService boundService;
+    private LocalService boundService;
     
     private boolean isBoundService;
 
@@ -166,7 +166,7 @@ public class CreateItemActivity extends Activity implements OnClickListener {
     }
     
     private void doBindService() {
-        bindService(new Intent(this, GalleryService.class), serviceConnection,
+        bindService(new Intent(this, LocalService.class), serviceConnection,
                 Context.BIND_AUTO_CREATE);
         isBoundService = true;
     }
@@ -186,7 +186,7 @@ public class CreateItemActivity extends Activity implements OnClickListener {
             
             // get the service instance, either creates one or uses
             // an existing
-            boundService = ((GalleryService.GalleryServiceBinder) service).getService();
+            boundService = ((LocalService.GalleryServiceBinder) service).getService();
             
             // get the item worker instance
             itemWorker = boundService.getItemWorker();

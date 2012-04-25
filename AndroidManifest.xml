@@ -47,7 +47,7 @@
         </activity>
 
         <service
-            android:name=".GalleryService"
+            android:name=".LocalService"
             android:enabled="true" />
     </application>
 

@@ -87,16 +87,16 @@ public class GalleryActivity extends Activity
      * Instance of the listview/GridView the gallery is displaying.
      */
     private GridView gridView = null;
-    
+
     /**
      * Spacing between thumbnails.
      */
-    private static final int THUMB_SPACING = 5;
+    public static final int THUMB_SPACING = 5;
     
     /**
      * Padding between thumbnails.
      */
-    private static final int THUMB_PADDING = 2;
+    public static final int THUMB_PADDING = 2;
     
     /**
      * Width of the screen, varies between devices and in landscape mode.
@@ -143,7 +143,7 @@ public class GalleryActivity extends Activity
     /**
      * Service that holds the worker instances.
      */
-    private GalleryService boundService;
+    private LocalService boundService;
     
     /**
      * If the service has been bound to this activity.
@@ -284,7 +284,7 @@ public class GalleryActivity extends Activity
      * the service is created and started.
      */
     private void doBindService() {
-        bindService(new Intent(this, GalleryService.class), serviceConnection,
+        bindService(new Intent(this, LocalService.class), serviceConnection,
                 Context.BIND_AUTO_CREATE);
         isBoundService = true;
     }
@@ -311,7 +311,7 @@ public class GalleryActivity extends Activity
             
             // get the service instance, either creates one or uses
             // an existing
-            boundService = ((GalleryService.GalleryServiceBinder) service).getService();
+            boundService = ((LocalService.GalleryServiceBinder) service).getService();
             
             // get worker instances:
             itemWorker = boundService.getItemWorker();
@@ -437,112 +437,18 @@ public class GalleryActivity extends Activity
         alertDialog.show();
     }
 
-	/**
-	 * Create a new view to be used as a item within the GridView.
-	 * 
-	 * This is called by the GalleryAdapter to create a new view,
-	 * the same views are later recycled by the gridview to display
-	 * other images.
-	 * 
-	 * The View is a ViewSwitcher that either shows a progress/loading
-	 * bar or the image thumbnail.
-	 * 
-	 * @return new view instance
-	 */
-	public View createItemView() {
-        Log.d(TAG, "create new item view");
-
-        // create view switcher
-        ViewSwitcher viewSwitcher = new ViewSwitcher(this);
-        viewSwitcher.setBackgroundColor(R.color.gallery_item_view_background);
-        viewSwitcher.setPadding(THUMB_PADDING, THUMB_PADDING, THUMB_PADDING, THUMB_PADDING);
-
-        // create progressbar
-        ViewSwitcher.LayoutParams progressBarLayoutParams =
-                 new ViewSwitcher.LayoutParams(
-                         (int) Math.floor(thumbWidth / 2.5), 
-                         (int) Math.floor(thumbWidth / 2.5));
-        progressBarLayoutParams.gravity = Gravity.CENTER;
-        ProgressBar progressBar = new ProgressBar(this);
-        progressBar.setLayoutParams(progressBarLayoutParams);
-        
-        // create image view
-        ImageView imageView = new ImageView(this);
-        imageView.setLayoutParams(imageViewLayoutParams);
-        imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        
-        // add to view switcher
-        viewSwitcher.addView(progressBar);
-        viewSwitcher.addView(imageView);
-        viewSwitcher.setDisplayedChild(0);
-        
-        return viewSwitcher;
-	}
-	
-	/**
-	 * Return the thumbnail image view of the viewswitcher.
-	 * 
-	 * @param viewSwitcher
-	 * @return imageview instance
-	 */
-	private ImageView getImageViewFromViewSwitcher(ViewSwitcher viewSwitcher) {
-        return (ImageView) viewSwitcher.getChildAt(1);
-    }
-	
-    /**
-     * Switch to the progress/loading bar of the view(switcher)
-     * 
-     * @param view
-     */
-    public void showItemViewProgressBar(View view) {
-	    ((ViewSwitcher) view).setDisplayedChild(0);
-	}
-	
-    /**
-     * Switch to the thumbnail image view of the provided view(switcher)
-     * 
-     * @param view
-     */
-    private void showItemViewImageView(View view) {
-        ((ViewSwitcher) view).setDisplayedChild(1);
-    }
-	
-	/**
-	 * Update the View(Switcher) thumbnail ImageView's bitmap.
-	 * 
-	 * This sets the bitmap and resets the layout.
-	 * 
-	 * @param view
-	 * @param bitmap
-	 */
-	public void updateItemView(View view, Bitmap bitmap) {
-        showItemViewImageView(view);
-        
-        ImageView imageView = getImageViewFromViewSwitcher((ViewSwitcher) view);
-        imageView.setLayoutParams(imageViewLayoutParams);
-        imageView.setImageBitmap(bitmap);
-	}
-
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         Item item = itemWorker.getItemByPosition(position);
         
         if (item == null) return; // huh?
-        
-        // click on video thumbnails starts browser or youtube application/etc.
-        /*
-        if (item.getType() == Type.VIDEO) {
-            Intent openLinkIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(item.getSource()));
-            startActivity(openLinkIntent);
-        }
-        else { // click starts the item activity that shows the fullsized image
-            */
-            Intent showItemActivityIntent = new Intent(this, ItemActivity.class);
-            Bundle itemIdBundle = new Bundle();
-            itemIdBundle.putInt("id", item.getId());
-            showItemActivityIntent.putExtras(itemIdBundle);
-            startActivity(showItemActivityIntent);
-        //}
+
+        // switch to detailed item activity
+        Intent showItemActivityIntent = new Intent(this, ItemActivity.class);
+        Bundle itemIdBundle = new Bundle();
+        itemIdBundle.putInt("id", item.getId());
+        showItemActivityIntent.putExtras(itemIdBundle);
+        startActivity(showItemActivityIntent);
     }
 
     @Override
@@ -676,6 +582,49 @@ public class GalleryActivity extends Activity
                 break;
             }
         }
+    }
+    
+    /**
+     * Create a new view to be used as a item within the GridView.
+     * 
+     * This is called by the GalleryAdapter to create a new view,
+     * the same views are later recycled by the gridview to display
+     * other images.
+     * 
+     * The View is a ViewSwitcher that either shows a progress/loading
+     * bar or the image thumbnail.
+     * 
+     * @return new view instance
+     */
+    public ViewSwitcher createItemViewSwitcher() {
+        // create view switcher
+        ViewSwitcher viewSwitcher = new ViewSwitcher(this);
+        viewSwitcher.setBackgroundColor(R.color.gallery_item_view_background);
+        viewSwitcher.setPadding(GalleryActivity.THUMB_PADDING, 
+                GalleryActivity.THUMB_PADDING, 
+                GalleryActivity.THUMB_PADDING, 
+                GalleryActivity.THUMB_PADDING);
+
+        // create progressbar
+        ViewSwitcher.LayoutParams progressBarLayoutParams =
+                 new ViewSwitcher.LayoutParams(
+                         (int) Math.floor(thumbWidth / 2.5), 
+                         (int) Math.floor(thumbWidth / 2.5));
+        progressBarLayoutParams.gravity = Gravity.CENTER;
+        ProgressBar progressBar = new ProgressBar(this);
+        progressBar.setLayoutParams(progressBarLayoutParams);
+        
+        // create image view
+        ImageView imageView = new ImageView(this);
+        imageView.setLayoutParams(imageViewLayoutParams);
+        imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        
+        // add to view switcher
+        viewSwitcher.addView(progressBar);
+        viewSwitcher.addView(imageView);
+        viewSwitcher.setDisplayedChild(0);
+        
+        return viewSwitcher;
     }
     
 }

@@ -32,7 +32,7 @@ import android.util.Log;
  * local service holds a single application wide instance of
  * them.
  */
-public class GalleryService extends Service {
+public class LocalService extends Service {
 
     /**
      * Standard android logging tag.
@@ -43,8 +43,8 @@ public class GalleryService extends Service {
      * Binder for this local-only service, works like a singleton.
      */
     public class GalleryServiceBinder extends Binder {
-        public GalleryService getService() {
-            return GalleryService.this;
+        public LocalService getService() {
+            return LocalService.this;
         }
     }
     

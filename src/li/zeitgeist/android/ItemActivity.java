@@ -63,7 +63,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
     
     private ThumbnailWorker thumbnailWorker;
     
-    private GalleryService boundService;
+    private LocalService boundService;
     
     private boolean isBoundService;
     
@@ -141,7 +141,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
     }
     
     private void doBindService() {
-        bindService(new Intent(this, GalleryService.class), serviceConnection,
+        bindService(new Intent(this, LocalService.class), serviceConnection,
                 Context.BIND_AUTO_CREATE);
         isBoundService = true;
     }
@@ -161,7 +161,7 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
             
             // get the service instance, either creates one or uses
             // an existing
-            boundService = ((GalleryService.GalleryServiceBinder) service).getService();
+            boundService = ((LocalService.GalleryServiceBinder) service).getService();
             
             // get the worker instances
             itemWorker = boundService.getItemWorker();

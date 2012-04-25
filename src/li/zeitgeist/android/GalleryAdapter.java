@@ -24,10 +24,16 @@ import li.zeitgeist.android.worker.ItemWorker.UpdatedItemsListener;
 
 import li.zeitgeist.api.Item;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.ViewSwitcher;
 
 /**
  * ListView Adapter for the Thumbnail Gallery.
@@ -39,6 +45,8 @@ import android.widget.BaseAdapter;
  */
 public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener {
 
+
+    
     /**
      * Standard android logging tag.
      */
@@ -117,63 +125,147 @@ public class GalleryAdapter extends BaseAdapter implements UpdatedItemsListener 
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-
-        Log.v(TAG, "getView, position: " + String.valueOf(position));
+        final ViewSwitcher viewSwitcher;
         
-        final View view;
+        // create a new view or recycle an old one
         if (convertView == null) {
-            // creates an empty view
-            view = galleryActivity.createItemView();
+            viewSwitcher = galleryActivity.createItemViewSwitcher();
         }
         else {
-            view = convertView; // use recycled view
+            viewSwitcher = (ViewSwitcher) convertView; // use recycled view
         }
-
-        // hide previous image, show progress circle
-        galleryActivity.showItemViewProgressBar(view);
         
-        // last item also triggers the loading of older items
-        if (itemWorker.getItemCount() == position+1 &&
-                !itemWorker.isLockedQuery()) {
+        
+        final ProgressBar progress = (ProgressBar) viewSwitcher.getChildAt(0);
+        final ImageView thumbnail = (ImageView) viewSwitcher.getChildAt(1);
+        
+        // the rendering of the last item is triggering the loading
+        // of older items at the bottom.
+        if (itemWorker.getItemCount() == position+1 && !itemWorker.isLockedQuery()) {
             itemWorker.queryOlderItems();
-            galleryActivity.showGalleryBarProgressIcon();
-            //return view;
         }
         
         final Item item = getItem(position);
-        
-        // tag this view with the item id
-        view.setTag(item.getId());
-        Log.v(TAG, "view tagged: " + String.valueOf(item.getId()));
-        
-        if (thumbnailWorker.isMemCached(item)) {
-            Log.v(TAG, "updateItemView in ui thread, memcached: " + String.valueOf(item.getId()));
-            galleryActivity.updateItemView(view, thumbnailWorker.getBitmapByItem(item));
+        if (item != null) {
+            Log.d(TAG, String.format("getView(%d) -> %d", position, item.getId()));
+            
+            Integer tag = (Integer) viewSwitcher.getTag();
+            if (tag != null && tag == item.getId()) {
+                // nothing
+            }
+            else {
+                viewSwitcher.setDisplayedChild(0);
+                viewSwitcher.setTag(item.getId());
+            }
+            
+            if (thumbnailWorker.isMemCached(item)) {
+                Log.v(TAG, "updateItemView in ui thread, memcached: " + String.valueOf(item.getId()));
+                Bitmap bitmap = thumbnailWorker.getBitmapByItem(item);
+                if ((Integer) viewSwitcher.getTag() != item.getId()) {
+                    Log.w(TAG, "warning tag mismatch: " + String.valueOf(item.getId()) + " (tagged) item: " + String.valueOf((Integer)viewSwitcher.getTag()));
+                }
+                else {
+                    thumbnail.setImageBitmap(bitmap);
+                    viewSwitcher.setDisplayedChild(1);
+                }
+                
+            }
+            else {
+                // load bitmap from disk or web and update the view
+                // within the UI thread, other loadThumbnail()'s override the callback
+                Log.v(TAG, "loadThumbnail() for id: " + String.valueOf(item.getId()));
+                thumbnailWorker.loadThumbnail(item, 
+                        new ThumbnailWorker.LoadedThumbnailListener() {
+                    @Override
+                    public void onLoadedThumbnail(final int id, final Bitmap bitmap) {
+
+                        Log.v(TAG, "[DEBUG] onLoadedThumbnail callback returned for id: " + String.valueOf(id));
+                        galleryActivity.runOnUiThread(new Runnable() {
+                            public void run() {
+                                Log.v(TAG, "[DEBUG] viewSwitcher.post(Runnable()) for " + String.valueOf(id));
+                                if ((Integer) viewSwitcher.getTag() != id) {
+                                    Log.w(TAG, "warning tag mismatch: " + String.valueOf(id) + " (tagged) item: " + String.valueOf((Integer)viewSwitcher.getTag()));
+                                    return;
+                                }
+
+                                thumbnail.setImageBitmap(bitmap);
+                                viewSwitcher.setDisplayedChild(1);
+                            }
+                        });
+                    }
+                });
+            }
         }
         else {
-            // load bitmap from disk or web and update the view
-            // within the UI thread, other loadThumbnail()'s override the callback
-            Log.v(TAG, "loadThumbnail() for id: " + String.valueOf(item.getId()));
-            thumbnailWorker.loadThumbnail(item, 
-                    new ThumbnailWorker.LoadedThumbnailListener() {
-                @Override
-                public void onLoadedThumbnail(final int id, final Bitmap bitmap) {
-
-                    Log.v(TAG, "onLoadedThumbnail callback returned for id: " + String.valueOf(id));
-                    view.post(new Runnable() {
-                        public void run() {
-                            if ((Integer) view.getTag() != id) {
-                                Log.w(TAG, "warning tag mismatch: " + String.valueOf(id) + " (tagged) item: " + String.valueOf((Integer)view.getTag()));
-                                return;
-                            }
-                            
-                            galleryActivity.updateItemView(view, bitmap);
-                        }
-                    });
-                }
-            });
+            Log.w(TAG, String.format("getView(%d) -> null", position));
         }
 
-        return view;
+        /*
+        // hide previous image, show progress circle
+        galleryActivity.showItemViewProgressBar(view);
+        
+
+
+        
+        
+        
+        // tag this view with the item id
+
+        */
+        
+        return viewSwitcher;
     }
+
+
+/*
+    public View createItemView() {
+        Log.d(TAG, "create new item view");
+
+
+    }
+    
+    **
+     * Return the thumbnail image view of the viewswitcher.
+     * 
+     * @param viewSwitcher
+     * @return imageview instance
+     *
+    private ImageView getImageViewFromViewSwitcher(ViewSwitcher viewSwitcher) {
+        return (ImageView) viewSwitcher.getChildAt(1);
+    }
+    
+    **
+     * Switch to the progress/loading bar of the view(switcher)
+     * 
+     * @param view
+     *
+    public void showItemViewProgressBar(View view) {
+        ((ViewSwitcher) view).setDisplayedChild(0);
+    }
+    
+    **
+     * Switch to the thumbnail image view of the provided view(switcher)
+     * 
+     * @param view
+     *
+    private void showItemViewImageView(View view) {
+        ((ViewSwitcher) view).setDisplayedChild(1);
+    }
+    
+    **
+     * Update the View(Switcher) thumbnail ImageView's bitmap.
+     * 
+     * This sets the bitmap and resets the layout.
+     * 
+     * @param view
+     * @param bitmap
+     *
+    public void updateItemView(View view, Bitmap bitmap) {
+        showItemViewImageView(view);
+        
+        ImageView imageView = getImageViewFromViewSwitcher((ViewSwitcher) view);
+        imageView.setLayoutParams(imageViewLayoutParams);
+        imageView.setImageBitmap(bitmap);
+    }*/
+
 }
