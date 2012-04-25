@@ -472,12 +472,12 @@ public class ItemWorker extends Thread {
                         // check for items outside of the boundaries that have
                         // been deleted
                         if (after == -1) { // there shouldn't be any items:
-                            for (int id = itemCache.lastKey(); id > lastId; id--) {
+                            /*for (int id = itemCache.lastKey(); id > lastId; id--) {
                                 if (itemCache.containsKey(id)) {
                                     itemCache.remove(id);
                                     Log.v(TAG, "item found outside boundaries, delete: " + String.valueOf(id));
                                 }
-                            }
+                            }*/
                         }
                     }
                     
