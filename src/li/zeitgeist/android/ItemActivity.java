@@ -22,6 +22,7 @@ import java.util.List;
 import li.zeitgeist.android.worker.*;
 import li.zeitgeist.android.worker.ItemWorker.ItemDeleteListener;
 import li.zeitgeist.android.worker.ItemWorker.UpdatedItemTagsListener;
+import li.zeitgeist.android.worker.ItemWorker.ItemUpvoteListener;
 import li.zeitgeist.api.Item;
 import li.zeitgeist.api.Item.Type;
 import li.zeitgeist.api.Tag;
@@ -321,7 +322,12 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
        
         
         // add delete button (if user is authenticated)
+        
+        
+        // action buttons that require user authentication
         Button deleteButton = (Button) findViewById(R.id.itemDetailDelete);
+        Button upvoteButton = (Button) findViewById(R.id.itemDetailUpvote);
+        
         SharedPreferences prefs = 
                 PreferenceManager.getDefaultSharedPreferences(this);
         String apiSecret =  prefs.getString("apiSecret", null); 
@@ -354,11 +360,27 @@ public class ItemActivity extends Activity implements OnMenuItemClickListener, O
                     .setNegativeButton("Cancel", null)
                     .show();
                 }});
+            upvoteButton.setVisibility(View.VISIBLE); // make the button visible
+            final boolean removeUpvote = itemWorker.hasUserUpvotedItem(item);
+            if (removeUpvote) {
+                upvoteButton.setText("remove upvote");
+            }
+            upvoteButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    itemWorker.upvoteItem(item.getId(), new ItemUpvoteListener() {
+                        @Override
+                        public void onItemUpvote(int id) {
+                            Toast.makeText(ItemActivity.this, "Item upvoted", Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            showErrorAlert(error);
+                        }}, removeUpvote);
+                }});
         }
         
-                
-
-
         
         
         

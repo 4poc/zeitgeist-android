@@ -82,6 +82,13 @@
             android:layout_height="wrap_content"
             android:visibility="gone"
             android:text="delete this item" />
+        
+        <Button
+            android:id="@+id/itemDetailUpvote"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:text="upvote this item" />
 
     </LinearLayout>
 

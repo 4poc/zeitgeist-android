@@ -90,6 +90,11 @@ public class ItemWorker extends Thread {
         public void onItemDelete(final int id);
         public void onError(final String error);
     }
+    
+    public interface ItemUpvoteListener {
+        public void onItemUpvote(final int id);
+        public void onError(final String error);
+    }
 
     /**
      * List of updated items listener to inform.
@@ -389,6 +394,46 @@ public class ItemWorker extends Thread {
             }});
         
     }
+    
+    
+    /**
+     * Upvote item specified by id.
+     * 
+     * You may set remove to true to undo a previous upvote.
+     * 
+     * @param id
+     * @param listener
+     * @param remove
+     */
+    public void upvoteItem(final int id, final ItemUpvoteListener listener,
+            final boolean remove) {
+        if (!isAlive() || handler == null) {
+            return;
+        }
+        
+        Log.v(TAG, String.format("upvote item with id #%d", id));
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    api.upvote(id, remove);
+                    listener.onItemUpvote(id);
+                } catch (ZeitgeistError e) {
+                    Log.e(TAG, "Zeitgeist Error: " + e.getError());
+                    listener.onError(e.getError());
+                }
+            }});
+    }
+    
+    /**
+     * Check to see if the authenticated user has upvoted an item.
+     * @param item
+     * @return true if upvoted
+     */
+    public boolean hasUserUpvotedItem(Item item) {
+        return item.getUsersUpvoted().contains(api.getUserId());
+    }
+
 
     /**
      * Query for items that come after or before whats provided.
